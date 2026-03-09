@@ -623,6 +623,84 @@ function renderLibrary() {
 
 function renderSettings() {
   const { site, settings } = state.data;
+  const apiModules = [
+    {
+      name: "Auth",
+      description: "Gestiona el acceso al panel y la sesión activa del usuario.",
+      endpoints: ["POST /api/auth/login", "POST /api/auth/logout", "GET /api/auth/me"]
+    },
+    {
+      name: "Pages",
+      description: "Permite crear, editar, publicar y organizar las páginas del sitio.",
+      endpoints: ["GET /api/pages", "POST /api/pages", "PATCH /api/pages/:id"]
+    },
+    {
+      name: "Sections",
+      description: "Define la estructura interna de cada página mediante bloques ordenables.",
+      endpoints: ["POST /api/pages/:id/sections", "PATCH /api/sections/:id", "DELETE /api/sections/:id"]
+    },
+    {
+      name: "Blocks",
+      description: "Controla las piezas modulares de contenido que forman cada sección.",
+      endpoints: ["POST /api/sections/:id/blocks", "PATCH /api/blocks/:id", "PATCH /api/blocks/:id/toggle"]
+    },
+    {
+      name: "Media",
+      description: "Centraliza imágenes y archivos reutilizables del sistema.",
+      endpoints: ["GET /api/media", "POST /api/media/upload", "DELETE /api/media/:id"]
+    },
+    {
+      name: "Render / Preview",
+      description: "Entrega el contenido publicado al frontend y permite revisar borradores antes de publicarlos.",
+      endpoints: ["GET /api/render/page/:slug", "GET /api/preview/page/:slug"]
+    }
+  ];
+
+  const apiExamples = [
+    {
+      title: "Inicio de sesión",
+      endpoint: "POST /api/auth/login",
+      request: `{
+  "email": "admin@novabuilder.io",
+  "password": "••••••••"
+}`,
+      response: `{
+  "success": true,
+  "data": { "token": "jwt_token", "role": "admin" },
+  "error": null
+}`
+    },
+    {
+      title: "Listado de páginas",
+      endpoint: "GET /api/pages",
+      request: `Headers: Authorization: Bearer <token>`,
+      response: `{
+  "success": true,
+  "data": [{ "id": "pg_home", "title": "Home", "status": "published" }],
+  "error": null
+}`
+    },
+    {
+      title: "Render de página",
+      endpoint: "GET /api/render/page/:slug",
+      request: `GET /api/render/page/home`,
+      response: `{
+  "success": true,
+  "data": { "slug": "home", "sections": [...] },
+  "error": null
+}`
+    }
+  ];
+
+  const systemRules = [
+    "Cada página debe tener un slug único.",
+    "Solo una página puede estar marcada como homepage.",
+    "Una página archivada no aparece en el frontend público.",
+    "Sections y blocks se ordenan por order_index.",
+    "Preview requiere permisos (admin o editor).",
+    "Los bloques pueden activarse o desactivarse sin eliminarse."
+  ];
+
   els.tabs.settings.innerHTML = `
     <article class="card">
       <h3>Settings del sitio</h3>
@@ -638,6 +716,67 @@ function renderSettings() {
         <label>Instagram<input name="instagram" value="${settings.social.instagram}" /></label>
         <button class="btn primary" type="submit">Guardar settings</button>
       </form>
+    </article>
+
+    <article class="card api-card">
+      <div class="row between wrap align-start">
+        <div>
+          <p class="eyebrow">API interna del CMS</p>
+          <h3>Arquitectura operativa, clara y fácil de seguir</h3>
+          <p class="muted">Esta capa organiza cómo el CMS autentica usuarios, administra páginas, gestiona bloques y entrega contenido publicado o en preview.</p>
+        </div>
+        <div class="chip-row">
+          <span class="chip">Roles: admin / editor / viewer</span>
+          <span class="chip">Respuesta estándar: success / data / error</span>
+        </div>
+      </div>
+
+      <div class="api-module-grid">
+        ${apiModules
+          .map(
+            (module) => `
+            <article class="api-module-item">
+              <h4>${module.name}</h4>
+              <p>${module.description}</p>
+              <ul>
+                ${module.endpoints.map((endpoint) => `<li><code>${endpoint}</code></li>`).join("")}
+              </ul>
+            </article>
+          `
+          )
+          .join("")}
+      </div>
+    </article>
+
+    <article class="card">
+      <h3>Ejemplos clave de requests y responses</h3>
+      <p class="muted">Solo los flujos más importantes para entender cómo se conecta el CMS con el frontend.</p>
+      <div class="api-examples-grid">
+        ${apiExamples
+          .map(
+            (example) => `
+            <article class="api-example-item">
+              <div class="row between wrap">
+                <h4>${example.title}</h4>
+                <span class="badge subtle">${example.endpoint}</span>
+              </div>
+              <p class="eyebrow">Request</p>
+              <pre>${escapeHtml(example.request)}</pre>
+              <p class="eyebrow">Response</p>
+              <pre>${escapeHtml(example.response)}</pre>
+            </article>
+          `
+          )
+          .join("")}
+      </div>
+    </article>
+
+    <article class="card">
+      <h3>Reglas del sistema</h3>
+      <p class="muted">Guía rápida para mantener una operación consistente entre contenido, permisos y publicación.</p>
+      <ul class="system-rules-list">
+        ${systemRules.map((rule) => `<li>${rule}</li>`).join("")}
+      </ul>
     </article>
   `;
 
@@ -664,11 +803,6 @@ function renderSEO() {
       <h3>SEO básico</h3>
       <form id="seoForm" class="form-grid">
         <label>Title<input name="title" value="${seo.title}" /></label>
-        <label>Description<textarea name="description">${seo.description}</textarea></label>
-        <label>Keywords<input name="keywords" value="${seo.keywords}" /></label>
-        <label>OG Image<input name="ogImage" value="${seo.ogImage}" /></label>
-        <label>Robots<input name="robots" value="${seo.robots}" /></label>
-        <label>Canonical<input name="canonical" value="${seo.canonical}" /></label>
         <button class="btn primary" type="submit">Guardar SEO</button>
       </form>
     </article>
