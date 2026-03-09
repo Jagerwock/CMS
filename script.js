@@ -1,25 +1,17 @@
-const APP_KEY = "dealtracker::session";
-const USERS_KEY = "dealtracker::users";
-const USER_DATA_KEY = (email) => `dealtracker::data::${email}`;
-
-const initialDemo = {
-  clients: [
-    { id: crypto.randomUUID(), name: "Aurora Studio", company: "Aurora Studio", email: "hello@aurorastudio.io", phone: "+51 981 112 932", notes: "Monthly retainer client" },
-    { id: crypto.randomUUID(), name: "Mateo Rivas", company: "Freelance Founder", email: "mateo@rivas.pe", phone: "+51 965 778 441", notes: "Needs fast iterations" }
-  ],
-  projects: [
-    { id: crypto.randomUUID(), name: "Landing Page Redesign", clientId: "", total: 1200, startDate: "2026-02-02", dueDate: "2026-03-10", description: "Conversion-focused redesign", status: "In Progress" }
-  ],
-  payments: []
+const STORAGE_KEYS = {
+  session: "dealtracker::session",
+  users: "dealtracker::users"
 };
-initialDemo.projects[0].clientId = initialDemo.clients[0].id;
+
+const userDataKey = (userId) => `dealtracker::user_data::${userId}`;
 
 const state = {
-  mode: "guest",
-  user: { name: "Guest Freelancer", email: null },
-  data: structuredClone(initialDemo),
-  pendingGuestData: null,
-  tab: "dashboard"
+  session: null,
+  tab: "dashboard",
+  authMode: "landing",
+  authFormMode: "signin",
+  editingClientId: null,
+  data: createBlankWorkspace()
 };
 
 const els = {
@@ -28,74 +20,140 @@ const els = {
   toast: document.getElementById("toast"),
   guestBanner: document.getElementById("guestBanner"),
   accountChip: document.getElementById("accountChip"),
-  authPortalBtn: document.getElementById("authPortalBtn"),
+  switchAccountBtn: document.getElementById("switchAccountBtn"),
   signOutBtn: document.getElementById("signOutBtn")
 };
 
-init();
+bootstrap();
 
-function init() {
-  restoreSession();
-  wireGlobalEvents();
+function bootstrap() {
+  hydrateSession();
+  bindGlobalEvents();
   render();
 }
 
-function restoreSession() {
-  const session = JSON.parse(localStorage.getItem(APP_KEY) || "null");
-  if (!session) {
-    persistSession();
-    return;
-  }
-  state.mode = session.mode || "guest";
-  state.user = session.user || { name: "Guest Freelancer", email: null };
-
-  if (state.mode === "account" && state.user?.email) {
-    state.data = JSON.parse(localStorage.getItem(USER_DATA_KEY(state.user.email)) || "null") || structuredClone(initialDemo);
-    return;
-  }
-
-  state.mode = "guest";
-  state.user = { name: "Guest Freelancer", email: null };
-  state.data = structuredClone(initialDemo);
-  persistSession();
+function createBlankWorkspace() {
+  return {
+    users: [],
+    clients: [],
+    projects: [],
+    payments: [],
+    activityLogs: []
+  };
 }
 
-function persistSession() {
-  localStorage.setItem(APP_KEY, JSON.stringify({ mode: state.mode, user: state.user }));
-  if (state.mode === "account" && state.user?.email) {
-    localStorage.setItem(USER_DATA_KEY(state.user.email), JSON.stringify(state.data));
-  }
+function createGuestWorkspace() {
+  const clientId = crypto.randomUUID();
+  const projectId = crypto.randomUUID();
+  return {
+    users: [],
+    clients: [
+      {
+        id: clientId,
+        user_id: "guest",
+        name: "Aurora Studio",
+        email: "team@aurora.studio",
+        phone: "+1 415 555 0147",
+        company: "Aurora Studio"
+      }
+    ],
+    projects: [
+      {
+        id: projectId,
+        client_id: clientId,
+        name: "Website Revamp",
+        description: "Modern redesign focused on conversion and lead capture.",
+        status: "activo",
+        price: 3400,
+        start_date: isoDate(-12),
+        end_date: isoDate(18)
+      }
+    ],
+    payments: [
+      {
+        id: crypto.randomUUID(),
+        project_id: projectId,
+        amount: 1200,
+        status: "pagado",
+        due_date: isoDate(-5),
+        paid_date: isoDate(-3)
+      }
+    ],
+    activityLogs: [
+      {
+        id: crypto.randomUUID(),
+        user_id: "guest",
+        action: "created project",
+        created_at: new Date().toISOString()
+      }
+    ]
+  };
 }
 
-function wireGlobalEvents() {
-  els.authPortalBtn.addEventListener("click", () => {
-    if (state.mode === "account") return;
-    state.pendingGuestData = structuredClone(state.data);
-    state.mode = null;
+function isoDate(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function hydrateSession() {
+  const rawSession = localStorage.getItem(STORAGE_KEYS.session);
+  if (!rawSession) {
+    state.session = null;
+    state.data = createGuestWorkspace();
+    return;
+  }
+
+  const session = JSON.parse(rawSession);
+  if (session.mode === "account" && session.user?.id) {
+    const persistedData = JSON.parse(localStorage.getItem(userDataKey(session.user.id)) || "null");
+    state.session = session;
+    state.data = persistedData || createBlankWorkspace();
+    return;
+  }
+
+  if (session.mode === "guest") {
+    state.session = session;
+    state.data = createGuestWorkspace();
+    return;
+  }
+
+  state.session = null;
+  state.data = createGuestWorkspace();
+}
+
+function bindGlobalEvents() {
+  els.switchAccountBtn.addEventListener("click", () => {
+    if (state.session?.mode === "account") return;
+    state.authMode = "form";
+    state.authFormMode = "signin";
     render();
   });
 
   els.signOutBtn.addEventListener("click", () => {
-    if (state.mode === "guest" && !confirm("You are in guest mode. If you leave now, your data will be lost. Continue?")) return;
-    localStorage.removeItem(APP_KEY);
-    state.mode = "guest";
-    state.user = { name: "Guest Freelancer", email: null };
-    state.data = structuredClone(initialDemo);
-    state.pendingGuestData = null;
-    persistSession();
+    if (!state.session) return;
+    localStorage.removeItem(STORAGE_KEYS.session);
+    state.session = null;
+    state.authMode = "landing";
+    state.data = createGuestWorkspace();
     render();
-  });
-
-  window.addEventListener("beforeunload", (event) => {
-    if (state.mode === "guest") {
-      event.preventDefault();
-      event.returnValue = "Your guest data won’t be saved.";
-    }
   });
 }
 
+function persistWorkspace() {
+  if (state.session?.mode === "account") {
+    localStorage.setItem(userDataKey(state.session.user.id), JSON.stringify(state.data));
+  }
+}
+
+function persistSession() {
+  if (state.session) {
+    localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(state.session));
+  }
+}
+
 function render() {
-  if (!state.mode) {
+  if (!state.session) {
     renderAuth();
     return;
   }
@@ -103,9 +161,10 @@ function render() {
   els.authView.classList.add("hidden");
   els.appView.classList.remove("hidden");
 
-  els.accountChip.textContent = state.mode === "guest" ? "Guest Mode" : state.user.name;
-  els.authPortalBtn.classList.toggle("hidden", state.mode === "account");
-  els.signOutBtn.textContent = state.mode === "guest" ? "Exit guest" : "Sign out";
+  els.accountChip.textContent =
+    state.session.mode === "guest" ? "Guest mode" : `${state.session.user.name}`;
+  els.switchAccountBtn.classList.toggle("hidden", state.session.mode === "account");
+  els.signOutBtn.textContent = state.session.mode === "guest" ? "Exit guest" : "Sign out";
 
   renderGuestBanner();
   renderMenu();
@@ -113,115 +172,148 @@ function render() {
   renderClients();
   renderProjects();
   renderPayments();
-  renderExports();
+  renderReports();
 }
 
 function renderAuth() {
   els.authView.classList.remove("hidden");
   els.appView.classList.add("hidden");
-  els.authView.innerHTML = `
-    <div class="auth-card">
-      <aside class="auth-info">
-        <p class="eyebrow">DealTracker</p>
-        <h2>Keep your freelance progress safe</h2>
-        <p>Create an account or sign in to save your clients, projects, and payments.</p>
-        <ul>
-          <li>Your guest version is already active by default.</li>
-          <li>Login unlocks persistent data across sessions.</li>
-          <li>You can still go back to guest mode instantly.</li>
-        </ul>
-      </aside>
-      <div class="auth-form-wrap">
-        <div class="auth-toggle">
-          <button class="btn ghost" data-auth="signin">Sign in</button>
-          <button class="btn ghost" data-auth="signup">Create account</button>
-          <button class="btn primary" id="backToGuest">Back to guest app</button>
+
+  if (state.authMode === "landing") {
+    els.authView.innerHTML = `
+      <article class="auth-card auth-landing">
+        <div class="auth-info">
+          <p class="eyebrow">DealTracker</p>
+          <h2>The freelance command center for your clients and revenue</h2>
+          <p>Create clients, manage projects, register payments, and export clean reports in a single web dashboard.</p>
         </div>
-        <form id="accountForm" class="card">
-          <h3 id="authTitle">Sign in to your account</h3>
-          <label>Full name<input name="name" placeholder="e.g. Valeria Torres" /></label>
-          <label>Email<input name="email" type="email" required /></label>
-          <label>Password<input name="password" type="password" minlength="6" required /></label>
-          <p class="muted" id="authHint">Use your account credentials to access saved data.</p>
-          <div class="actions"><button class="btn primary" type="submit">Continue</button></div>
-        </form>
+        <div class="auth-actions">
+          <button class="btn primary" id="continueGuest">Continue as guest</button>
+          <button class="btn ghost" id="signInCta">Sign in</button>
+          <button class="btn ghost" id="createAccountCta">Create account</button>
+          <p class="muted">Your guest data won’t be saved. Create an account to keep your work safe.</p>
+        </div>
+      </article>
+    `;
+
+    document.getElementById("continueGuest").onclick = () => {
+      state.session = {
+        mode: "guest",
+        user: {
+          id: "guest",
+          name: "Guest Freelancer",
+          email: null,
+          created_at: new Date().toISOString()
+        }
+      };
+      state.data = createGuestWorkspace();
+      persistSession();
+      render();
+    };
+
+    document.getElementById("signInCta").onclick = () => {
+      state.authMode = "form";
+      state.authFormMode = "signin";
+      renderAuth();
+    };
+
+    document.getElementById("createAccountCta").onclick = () => {
+      state.authMode = "form";
+      state.authFormMode = "signup";
+      renderAuth();
+    };
+
+    return;
+  }
+
+  const signup = state.authFormMode === "signup";
+  els.authView.innerHTML = `
+    <article class="auth-card">
+      <div class="auth-info">
+        <p class="eyebrow">DealTracker</p>
+        <h2>${signup ? "Create your account" : "Welcome back"}</h2>
+        <p>${signup ? "Create an account to keep your work safe and available whenever you come back." : "Sign in to continue with your saved clients, projects, and payment history."}</p>
       </div>
-    </div>
+      <form id="authForm" class="card auth-form">
+        <h3>${signup ? "Create account" : "Sign in"}</h3>
+        ${signup ? '<label>Full name<input name="name" required /></label>' : ""}
+        <label>Email<input name="email" type="email" required /></label>
+        <label>Password<input name="password" type="password" minlength="6" required /></label>
+        <div class="actions">
+          <button class="btn primary" type="submit">${signup ? "Create account" : "Sign in"}</button>
+          <button class="btn ghost" type="button" id="backLanding">Back</button>
+          <button class="btn ghost" type="button" id="switchMode">${signup ? "I already have an account" : "Need an account?"}</button>
+        </div>
+      </form>
+    </article>
   `;
 
-  let authMode = "signin";
-  const form = document.getElementById("accountForm");
-  const title = document.getElementById("authTitle");
-  const hint = document.getElementById("authHint");
-  const nameInput = form.elements.name;
-  nameInput.closest("label").classList.add("hidden");
+  document.getElementById("backLanding").onclick = () => {
+    state.authMode = "landing";
+    renderAuth();
+  };
 
-  els.authView.querySelectorAll("[data-auth]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      authMode = btn.dataset.auth;
-      const signUp = authMode === "signup";
-      title.textContent = signUp ? "Create your DealTracker account" : "Sign in to your account";
-      hint.textContent = signUp
-        ? "Create an account to save your clients, projects, and payments."
-        : "Use your account credentials to access saved data.";
-      nameInput.closest("label").classList.toggle("hidden", !signUp);
-    });
-  });
+  document.getElementById("switchMode").onclick = () => {
+    state.authFormMode = signup ? "signin" : "signup";
+    renderAuth();
+  };
 
-  document.getElementById("backToGuest").addEventListener("click", () => {
-    state.mode = "guest";
-    state.user = { name: "Guest Freelancer", email: null };
-    state.data = state.pendingGuestData ? structuredClone(state.pendingGuestData) : structuredClone(initialDemo);
-    state.pendingGuestData = null;
-    persistSession();
-    render();
-  });
+  document.getElementById("authForm").onsubmit = (event) => {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(event.target));
+    signup ? createAccount(payload) : signIn(payload);
+  };
+}
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const payload = Object.fromEntries(new FormData(form));
-    if (!payload.email || !payload.password || (authMode === "signup" && !payload.name)) {
-      notify("Please complete all required fields.");
-      return;
-    }
+function createAccount(payload) {
+  const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users) || "[]");
+  if (users.some((entry) => entry.email.toLowerCase() === payload.email.toLowerCase())) {
+    notify("An account with this email already exists.");
+    return;
+  }
 
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+  const user = {
+    id: crypto.randomUUID(),
+    name: payload.name.trim(),
+    email: payload.email.trim().toLowerCase(),
+    password_hash: hashPassword(payload.password),
+    created_at: new Date().toISOString()
+  };
 
-    if (authMode === "signup") {
-      if (users.some((u) => u.email === payload.email)) {
-        notify("An account with this email already exists.");
-        return;
-      }
+  users.push(user);
+  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
 
-      users.push({ name: payload.name, email: payload.email, password: payload.password });
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  state.session = { mode: "account", user };
+  state.data = createBlankWorkspace();
+  persistSession();
+  persistWorkspace();
+  logActivity("created account");
+  notify("Account created successfully.");
+  render();
+}
 
-      const seedData = state.pendingGuestData || structuredClone(initialDemo);
-      localStorage.setItem(USER_DATA_KEY(payload.email), JSON.stringify(seedData));
+function signIn(payload) {
+  const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users) || "[]");
+  const user = users.find(
+    (entry) =>
+      entry.email.toLowerCase() === payload.email.toLowerCase() &&
+      entry.password_hash === hashPassword(payload.password)
+  );
 
-      state.user = { name: payload.name, email: payload.email };
-      state.mode = "account";
-      state.data = seedData;
-      state.pendingGuestData = null;
-      persistSession();
-      notify("Account created. Your workspace is ready.");
-      render();
-      return;
-    }
+  if (!user) {
+    notify("Invalid email or password.");
+    return;
+  }
 
-    const account = users.find((u) => u.email === payload.email && u.password === payload.password);
-    if (!account) {
-      notify("Invalid email or password.");
-      return;
-    }
+  state.session = { mode: "account", user };
+  state.data = JSON.parse(localStorage.getItem(userDataKey(user.id)) || "null") || createBlankWorkspace();
+  persistSession();
+  notify("Welcome back.");
+  render();
+}
 
-    state.mode = "account";
-    state.user = { name: account.name, email: account.email };
-    state.data = JSON.parse(localStorage.getItem(USER_DATA_KEY(account.email)) || "null") || structuredClone(initialDemo);
-    state.pendingGuestData = null;
-    persistSession();
-    render();
-  });
+function hashPassword(password) {
+  return btoa(password);
 }
 
 function renderMenu() {
@@ -229,236 +321,437 @@ function renderMenu() {
     btn.classList.toggle("active", btn.dataset.tab === state.tab);
     btn.onclick = () => {
       state.tab = btn.dataset.tab;
-      document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.add("hidden"));
-      document.getElementById(`${state.tab}Tab`).classList.remove("hidden");
       render();
     };
   });
+
   document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.add("hidden"));
   document.getElementById(`${state.tab}Tab`).classList.remove("hidden");
 }
 
 function renderGuestBanner() {
-  if (state.mode !== "guest") {
+  if (state.session.mode !== "guest") {
     els.guestBanner.innerHTML = "";
     return;
   }
 
   els.guestBanner.innerHTML = `
-    <div class="banner">
+    <article class="banner">
       <div>
-        <strong>You’re currently using DealTracker in guest mode.</strong>
-        <p class="muted">Your data won’t be saved unless you create an account. Create an account to save your clients, projects, and payments.</p>
+        <strong>You’re browsing in guest mode.</strong>
+        <p class="muted">Your guest data won’t be saved. Create an account to keep your work safe.</p>
       </div>
-      <button id="saveWorkBtn" class="btn primary">Save your work</button>
-    </div>`;
+      <button class="btn primary" id="guestToAccount">Create account</button>
+    </article>
+  `;
 
-  document.getElementById("saveWorkBtn").onclick = () => {
-    state.pendingGuestData = structuredClone(state.data);
-    state.mode = null;
+  document.getElementById("guestToAccount").onclick = () => {
+    state.session = null;
+    state.authMode = "form";
+    state.authFormMode = "signup";
     render();
   };
 }
 
 function renderDashboard() {
-  const monthIncome = getPaidThisMonth();
-  const pending = getPendingAmount();
-  const activeProjects = state.data.projects.filter((p) => paymentStatus(p.id) !== "Paid").length;
-  const container = document.getElementById("dashboardTab");
-  container.innerHTML = `
-    <div class="grid-4">
-      <article class="card metric"><p class="muted">Income this month</p><h3>${money(monthIncome)}</h3></article>
-      <article class="card metric"><p class="muted">Pending amount</p><h3>${money(pending)}</h3></article>
+  const dashboard = document.getElementById("dashboardTab");
+  const monthlyIncome = getIncomeForCurrentMonth();
+  const activeProjects = state.data.projects.filter((item) => item.status === "activo").length;
+  const pendingPayments = state.data.payments.filter((item) => computePaymentStatus(item) !== "pagado").length;
+  const activeClients = getActiveClients().length;
+
+  dashboard.innerHTML = `
+    <section class="grid-4">
+      <article class="card metric"><p class="muted">Monthly income</p><h3>${money(monthlyIncome)}</h3></article>
       <article class="card metric"><p class="muted">Active projects</p><h3>${activeProjects}</h3></article>
-      <article class="card metric"><p class="muted">Active clients</p><h3>${state.data.clients.length}</h3></article>
-    </div>
-    <div class="card">
-      <h3>Recent projects</h3>
-      ${state.data.projects.length ? `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Paid / Total</th></tr></thead><tbody>
-      ${state.data.projects.slice(-5).reverse().map((p) => `<tr><td>${p.name}</td><td>${clientName(p.clientId)}</td><td><span class="badge ${badgeClass(paymentStatus(p.id))}">${paymentStatus(p.id)}</span></td><td>${money(totalPaidByProject(p.id))} / ${money(Number(p.total))}</td></tr>`).join("")}
-      </tbody></table></div>` : `<p class="muted">No projects yet. Create your first project to track income.</p>`}
-    </div>
+      <article class="card metric"><p class="muted">Pending payments</p><h3>${pendingPayments}</h3></article>
+      <article class="card metric"><p class="muted">Active clients</p><h3>${activeClients}</h3></article>
+    </section>
+
+    <section class="layout-2">
+      <article class="card">
+        <h3>Revenue by client</h3>
+        ${renderRevenueByClient()}
+      </article>
+      <article class="card">
+        <h3>Recent activity</h3>
+        ${renderActivity()}
+      </article>
+    </section>
   `;
 }
 
 function renderClients() {
-  const container = document.getElementById("clientsTab");
-  container.innerHTML = `
-    <div class="layout-2">
+  const clientsTab = document.getElementById("clientsTab");
+  const editingClient = state.data.clients.find((item) => item.id === state.editingClientId);
+
+  clientsTab.innerHTML = `
+    <section class="layout-2">
       <form id="clientForm" class="card">
-        <h3>Add client</h3>
-        <label>Name<input name="name" required /></label>
-        <label>Company<input name="company" required /></label>
-        <label>Email<input name="email" type="email" required /></label>
-        <label>Phone<input name="phone" required /></label>
-        <label>Notes<textarea name="notes"></textarea></label>
-        <button class="btn primary" type="submit">Save client</button>
+        <h3>${editingClient ? "Edit client" : "Create client"}</h3>
+        <label>Name<input name="name" value="${editingClient?.name || ""}" required /></label>
+        <label>Email<input name="email" type="email" value="${editingClient?.email || ""}" required /></label>
+        <label>Phone<input name="phone" value="${editingClient?.phone || ""}" required /></label>
+        <label>Company<input name="company" value="${editingClient?.company || ""}" required /></label>
+        <div class="actions">
+          <button class="btn primary" type="submit">${editingClient ? "Update client" : "Save client"}</button>
+          ${editingClient ? '<button class="btn ghost" type="button" id="cancelEditClient">Cancel</button>' : ""}
+        </div>
       </form>
       <article class="card">
         <h3>Clients</h3>
-        ${state.data.clients.length ? `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th></tr></thead><tbody>${state.data.clients.map((c) => `<tr><td>${c.name}</td><td>${c.company}</td><td>${c.email}</td><td>${c.phone}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No clients yet. Create your first client to get started.</p>`}
+        ${state.data.clients.length ? `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th></th></tr></thead>
+              <tbody>
+                ${state.data.clients
+                  .map(
+                    (item) => `
+                    <tr>
+                      <td>${item.name}</td>
+                      <td>${item.company}</td>
+                      <td>${item.email}</td>
+                      <td>${item.phone}</td>
+                      <td><button class="btn ghost js-edit-client" data-client-id="${item.id}">Edit</button></td>
+                    </tr>
+                  `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : '<p class="muted">No clients yet. Create your first client to get started.</p>'}
       </article>
-    </div>`;
+    </section>
+  `;
 
-  document.getElementById("clientForm").onsubmit = (e) => {
-    e.preventDefault();
-    const payload = Object.fromEntries(new FormData(e.target));
-    state.data.clients.push({ ...payload, id: crypto.randomUUID() });
-    afterMutation("Client saved.");
+  document.getElementById("clientForm").onsubmit = (event) => {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(event.target));
+    if (editingClient) {
+      Object.assign(editingClient, payload);
+      logActivity("updated client");
+      state.editingClientId = null;
+      commitMutation("Client updated successfully.");
+      return;
+    }
+
+    state.data.clients.push({
+      id: crypto.randomUUID(),
+      user_id: state.session.user.id,
+      ...payload
+    });
+    logActivity("created client");
+    commitMutation("Client created successfully.");
   };
+
+  if (editingClient) {
+    document.getElementById("cancelEditClient").onclick = () => {
+      state.editingClientId = null;
+      renderClients();
+    };
+  }
+
+  clientsTab.querySelectorAll(".js-edit-client").forEach((button) => {
+    button.onclick = () => {
+      state.editingClientId = button.dataset.clientId;
+      renderClients();
+    };
+  });
 }
 
 function renderProjects() {
-  const container = document.getElementById("projectsTab");
-  const clientOptions = state.data.clients.map((c) => `<option value="${c.id}">${c.name} · ${c.company}</option>`).join("");
+  const projectsTab = document.getElementById("projectsTab");
+  const clientOptions = state.data.clients
+    .map((client) => `<option value="${client.id}">${client.name} — ${client.company}</option>`)
+    .join("");
 
-  container.innerHTML = `
-    <div class="layout-2">
+  projectsTab.innerHTML = `
+    <section class="layout-2">
       <form id="projectForm" class="card">
         <h3>Create project</h3>
         <label>Project name<input name="name" required /></label>
-        <label>Associated client<select name="clientId" required><option value="">Select a client</option>${clientOptions}</select></label>
-        <label>Total price<input type="number" min="0" step="0.01" name="total" required /></label>
-        <label>Start date<input type="date" name="startDate" required /></label>
-        <label>Delivery date<input type="date" name="dueDate" required /></label>
+        <label>Client<select name="client_id" required><option value="">Select client</option>${clientOptions}</select></label>
+        <label>Status<select name="status" required><option value="activo">activo</option><option value="completado">completado</option><option value="cancelado">cancelado</option></select></label>
+        <label>Price<input name="price" type="number" min="0" step="0.01" required /></label>
+        <label>Start date<input name="start_date" type="date" required /></label>
+        <label>End date<input name="end_date" type="date" required /></label>
         <label>Description<textarea name="description" required></textarea></label>
-        <label>Status<select name="status"><option>In Progress</option><option>On Hold</option><option>Completed</option></select></label>
         <button class="btn primary" type="submit">Save project</button>
       </form>
       <article class="card">
         <h3>Projects</h3>
-        ${state.data.projects.length ? `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Total</th><th>Paid</th><th>Pending</th></tr></thead><tbody>${state.data.projects.map((p) => `<tr><td>${p.name}</td><td>${clientName(p.clientId)}</td><td>${p.status}</td><td>${money(Number(p.total))}</td><td>${money(totalPaidByProject(p.id))}</td><td>${money(Math.max(Number(p.total) - totalPaidByProject(p.id), 0))}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No projects yet. Link projects to clients to track delivery and revenue.</p>`}
+        ${state.data.projects.length ? `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Price</th><th>Timeline</th><th>Balance</th></tr></thead>
+              <tbody>
+                ${state.data.projects
+                  .map((project) => {
+                    const paid = getProjectPaid(project.id);
+                    const balance = Math.max(Number(project.price) - paid, 0);
+                    return `
+                      <tr>
+                        <td>
+                          <strong>${project.name}</strong>
+                          <div class="muted">${project.description}</div>
+                        </td>
+                        <td>${clientName(project.client_id)}</td>
+                        <td><span class="badge status-${project.status}">${project.status}</span></td>
+                        <td>${money(project.price)}</td>
+                        <td>${project.start_date} → ${project.end_date}</td>
+                        <td>${money(balance)}</td>
+                      </tr>
+                    `;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : '<p class="muted">No projects yet. Create your first project after adding at least one client.</p>'}
       </article>
-    </div>`;
+    </section>
+  `;
 
-  document.getElementById("projectForm").onsubmit = (e) => {
-    e.preventDefault();
-    const payload = Object.fromEntries(new FormData(e.target));
-    if (!payload.clientId) {
-      notify("Please select a client before creating a project.");
+  document.getElementById("projectForm").onsubmit = (event) => {
+    event.preventDefault();
+    if (!state.data.clients.length) {
+      notify("Please create a client before creating a project.");
       return;
     }
-    state.data.projects.push({ ...payload, id: crypto.randomUUID(), total: Number(payload.total) });
-    afterMutation("Project created successfully.");
+
+    const payload = Object.fromEntries(new FormData(event.target));
+    state.data.projects.push({
+      id: crypto.randomUUID(),
+      ...payload,
+      price: Number(payload.price)
+    });
+    logActivity("created project");
+    commitMutation("Project created successfully.");
   };
 }
 
 function renderPayments() {
-  const container = document.getElementById("paymentsTab");
-  const projects = state.data.projects.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
-  container.innerHTML = `
-    <div class="layout-2">
+  const paymentsTab = document.getElementById("paymentsTab");
+  const projectOptions = state.data.projects
+    .map((project) => `<option value="${project.id}">${project.name}</option>`)
+    .join("");
+
+  paymentsTab.innerHTML = `
+    <section class="layout-2">
       <form id="paymentForm" class="card">
-        <h3>Record payment</h3>
-        <label>Project<select name="projectId" required><option value="">Select project</option>${projects}</select></label>
+        <h3>Register payment</h3>
+        <label>Project<select name="project_id" required><option value="">Select project</option>${projectOptions}</select></label>
         <label>Amount<input name="amount" type="number" min="0" step="0.01" required /></label>
-        <label>Date<input name="date" type="date" required /></label>
-        <label>Payment method<select name="method"><option>Bank Transfer</option><option>PayPal</option><option>Yape</option><option>Stripe</option></select></label>
-        <label>Reference<input name="reference" placeholder="TRX-2026-005" /></label>
-        <label>Notes<textarea name="notes"></textarea></label>
+        <label>Status<select name="status" required><option value="pendiente">pendiente</option><option value="pagado">pagado</option><option value="retrasado">retrasado</option></select></label>
+        <label>Due date<input name="due_date" type="date" required /></label>
+        <label>Paid date<input name="paid_date" type="date" /></label>
         <button class="btn primary" type="submit">Save payment</button>
       </form>
       <article class="card">
-        <h3>Payments history</h3>
-        ${state.data.payments.length ? `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Amount</th><th>Date</th><th>Method</th><th>Status</th></tr></thead><tbody>${state.data.payments.slice().reverse().map((p) => `<tr><td>${projectName(p.projectId)}</td><td>${money(Number(p.amount))}</td><td>${p.date}</td><td>${p.method}</td><td><span class="badge ${badgeClass(paymentStatus(p.projectId))}">${paymentStatus(p.projectId)}</span></td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No payments yet. Record the first payment to track cash flow.</p>`}
+        <h3>Payment history</h3>
+        ${state.data.payments.length ? `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Project</th><th>Amount</th><th>Status</th><th>Due</th><th>Paid</th></tr></thead>
+              <tbody>
+                ${state.data.payments
+                  .slice()
+                  .reverse()
+                  .map((payment) => {
+                    const status = computePaymentStatus(payment);
+                    return `
+                      <tr>
+                        <td>${projectName(payment.project_id)}</td>
+                        <td>${money(payment.amount)}</td>
+                        <td><span class="badge payment-${status}">${status}</span></td>
+                        <td>${payment.due_date || "—"}</td>
+                        <td>${payment.paid_date || "—"}</td>
+                      </tr>
+                    `;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+          <p><strong>Total paid:</strong> ${money(getTotalPaid())} · <strong>Pending balance:</strong> ${money(getPendingBalance())}</p>
+        ` : '<p class="muted">No payments yet. Register your first payment to track incoming cash.</p>'}
       </article>
-    </div>`;
+    </section>
+  `;
 
-  document.getElementById("paymentForm").onsubmit = (e) => {
-    e.preventDefault();
-    const payload = Object.fromEntries(new FormData(e.target));
-    state.data.payments.push({ ...payload, id: crypto.randomUUID(), amount: Number(payload.amount) });
-    afterMutation("Payment recorded successfully.");
+  document.getElementById("paymentForm").onsubmit = (event) => {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(event.target));
+    state.data.payments.push({
+      id: crypto.randomUUID(),
+      ...payload,
+      amount: Number(payload.amount)
+    });
+    logActivity("registered payment");
+    commitMutation("Payment recorded successfully.");
   };
 }
 
-function renderExports() {
-  const container = document.getElementById("exportsTab");
-  container.innerHTML = `
+function renderReports() {
+  const reportsTab = document.getElementById("reportsTab");
+  reportsTab.innerHTML = `
     <article class="card">
       <h3>Export reports</h3>
-      <p class="muted">Download your records as CSV files for accounting, reports, or backups.</p>
+      <p class="muted">Download your records in CSV format for accounting, backups, and external analysis.</p>
       <div class="actions">
         <button class="btn ghost" data-export="clients">Export clients</button>
         <button class="btn ghost" data-export="projects">Export projects</button>
         <button class="btn ghost" data-export="payments">Export payments</button>
       </div>
-    </article>`;
+    </article>
+  `;
 
-  container.querySelectorAll("[data-export]").forEach((btn) => {
-    btn.onclick = () => {
-      const key = btn.dataset.export;
-      exportCsv(key, state.data[key]);
-      notify(`${key[0].toUpperCase() + key.slice(1)} exported.`);
+  reportsTab.querySelectorAll("[data-export]").forEach((button) => {
+    button.onclick = () => {
+      const tableName = button.dataset.export;
+      exportTable(tableName, state.data[tableName]);
     };
   });
 }
 
-function afterMutation(message) {
-  persistSession();
+function renderRevenueByClient() {
+  if (!state.data.clients.length) {
+    return '<p class="muted">No clients yet. Create your first client to start tracking revenue by client.</p>';
+  }
+
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Client</th><th>Paid revenue</th></tr></thead>
+        <tbody>
+          ${state.data.clients
+            .map((client) => {
+              const revenue = state.data.projects
+                .filter((project) => project.client_id === client.id)
+                .reduce((sum, project) => sum + getProjectPaid(project.id), 0);
+
+              return `<tr><td>${client.name}</td><td>${money(revenue)}</td></tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderActivity() {
+  if (!state.data.activityLogs.length) {
+    return '<p class="muted">No activity yet. Start by adding a client or creating a project.</p>';
+  }
+
+  return `
+    <ul class="activity-list">
+      ${state.data.activityLogs
+        .slice()
+        .reverse()
+        .slice(0, 8)
+        .map(
+          (log) =>
+            `<li><strong>${log.action}</strong><span class="muted">${new Date(log.created_at).toLocaleString()}</span></li>`
+        )
+        .join("")}
+    </ul>
+  `;
+}
+
+function commitMutation(message) {
+  persistWorkspace();
   notify(message);
   render();
 }
 
-function totalPaidByProject(projectId) {
-  return state.data.payments.filter((pay) => pay.projectId === projectId).reduce((acc, p) => acc + Number(p.amount), 0);
+function logActivity(action) {
+  state.data.activityLogs.push({
+    id: crypto.randomUUID(),
+    user_id: state.session.user.id,
+    action,
+    created_at: new Date().toISOString()
+  });
 }
 
-function paymentStatus(projectId) {
-  const project = state.data.projects.find((p) => p.id === projectId);
-  if (!project) return "Pending";
-  const paid = totalPaidByProject(projectId);
-  if (paid <= 0) return "Pending";
-  if (paid < Number(project.total)) return "Partially Paid";
-  return "Paid";
+function computePaymentStatus(payment) {
+  if (payment.status === "pagado") return "pagado";
+  if (payment.paid_date) return "pagado";
+  if (payment.due_date && new Date(payment.due_date) < new Date()) return "retrasado";
+  return payment.status || "pendiente";
 }
 
-function badgeClass(status) {
-  if (status === "Paid") return "paid";
-  if (status === "Partially Paid") return "partial";
-  return "pending";
+function clientName(clientId) {
+  return state.data.clients.find((client) => client.id === clientId)?.name || "Unknown client";
 }
 
-function getPaidThisMonth() {
-  const now = new Date();
-  return state.data.payments.reduce((sum, pay) => {
-    const d = new Date(pay.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() ? sum + Number(pay.amount) : sum;
+function projectName(projectId) {
+  return state.data.projects.find((project) => project.id === projectId)?.name || "Unknown project";
+}
+
+function getProjectPaid(projectId) {
+  return state.data.payments
+    .filter((payment) => payment.project_id === projectId && computePaymentStatus(payment) === "pagado")
+    .reduce((sum, payment) => sum + Number(payment.amount), 0);
+}
+
+function getTotalPaid() {
+  return state.data.payments
+    .filter((payment) => computePaymentStatus(payment) === "pagado")
+    .reduce((sum, payment) => sum + Number(payment.amount), 0);
+}
+
+function getPendingBalance() {
+  return state.data.projects.reduce((sum, project) => {
+    const pending = Math.max(Number(project.price) - getProjectPaid(project.id), 0);
+    return sum + pending;
   }, 0);
 }
 
-function getPendingAmount() {
-  return state.data.projects.reduce((sum, p) => sum + Math.max(Number(p.total) - totalPaidByProject(p.id), 0), 0);
+function getIncomeForCurrentMonth() {
+  const now = new Date();
+  return state.data.payments
+    .filter((payment) => computePaymentStatus(payment) === "pagado" && payment.paid_date)
+    .filter((payment) => {
+      const paidDate = new Date(payment.paid_date);
+      return paidDate.getMonth() === now.getMonth() && paidDate.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, payment) => sum + Number(payment.amount), 0);
 }
 
-function clientName(id) {
-  return state.data.clients.find((c) => c.id === id)?.name || "Unknown client";
-}
-
-function projectName(id) {
-  return state.data.projects.find((p) => p.id === id)?.name || "Unknown project";
+function getActiveClients() {
+  const activeClientIds = new Set(state.data.projects.filter((project) => project.status === "activo").map((project) => project.client_id));
+  return state.data.clients.filter((client) => activeClientIds.has(client.id));
 }
 
 function money(value) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value) || 0);
 }
 
 function notify(message) {
   els.toast.textContent = message;
   els.toast.classList.add("show");
-  setTimeout(() => els.toast.classList.remove("show"), 1600);
+  setTimeout(() => els.toast.classList.remove("show"), 1800);
 }
 
-function exportCsv(fileName, rows) {
+function exportTable(tableName, rows) {
   if (!rows.length) {
-    notify(`No ${fileName} to export yet.`);
+    notify(`No ${tableName} to export.`);
     return;
   }
+
   const headers = Object.keys(rows[0]);
-  const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => JSON.stringify(row[h] ?? "")).join(","))].join("\n");
+  const lines = rows.map((row) => headers.map((key) => JSON.stringify(row[key] ?? "")).join(","));
+  const csv = [headers.join(","), ...lines].join("\n");
+
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${fileName}-report.csv`;
+  link.href = url;
+  link.download = `${tableName}-report.csv`;
   link.click();
+  URL.revokeObjectURL(url);
+  notify(`${tableName[0].toUpperCase() + tableName.slice(1)} exported successfully.`);
 }

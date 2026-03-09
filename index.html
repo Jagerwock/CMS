@@ -6,7 +6,7 @@
     <title>DealTracker</title>
     <meta
       name="description"
-      content="DealTracker helps freelancers manage clients, projects, payments, and financial metrics in guest or account mode." />
+      content="DealTracker is a professional web dashboard for freelancers to manage clients, projects, payments, and financial reports in guest or account mode." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,15 +18,15 @@
   <body>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <section id="authView" class="auth-shell hidden"></section>
+    <section id="authView" class="auth-shell"></section>
 
-    <section id="appView" class="app-shell">
+    <section id="appView" class="app-shell hidden">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">DT</div>
           <div>
             <h1>DealTracker</h1>
-            <p>Freelance Revenue OS</p>
+            <p>Freelancer Business Dashboard</p>
           </div>
         </div>
 
@@ -35,7 +35,7 @@
           <button class="menu-item" data-tab="clients">Clients</button>
           <button class="menu-item" data-tab="projects">Projects</button>
           <button class="menu-item" data-tab="payments">Payments</button>
-          <button class="menu-item" data-tab="exports">Exports</button>
+          <button class="menu-item" data-tab="reports">Reports</button>
         </nav>
       </aside>
 
@@ -43,11 +43,11 @@
         <header class="topbar card">
           <div>
             <p class="eyebrow">Welcome back</p>
-            <h2>Manage your freelance work in one place</h2>
+            <h2>Here’s a quick look at your freelance business</h2>
           </div>
           <div class="topbar-actions">
             <span id="accountChip" class="account-chip"></span>
-            <button id="authPortalBtn" class="btn primary">Sign in</button>
+            <button id="switchAccountBtn" class="btn ghost">Sign in</button>
             <button id="signOutBtn" class="btn ghost">Sign out</button>
           </div>
         </header>
@@ -58,7 +58,7 @@
         <section class="tab-panel hidden" id="clientsTab"></section>
         <section class="tab-panel hidden" id="projectsTab"></section>
         <section class="tab-panel hidden" id="paymentsTab"></section>
-        <section class="tab-panel hidden" id="exportsTab"></section>
+        <section class="tab-panel hidden" id="reportsTab"></section>
       </main>
     </section>
   </body>
