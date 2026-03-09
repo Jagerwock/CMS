@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DealTracker</title>
+    <title>NovaBuilder CMS Platform</title>
     <meta
       name="description"
-      content="DealTracker is a professional web dashboard for freelancers to manage clients, projects, payments, and financial reports in guest or account mode." />
+      content="Plataforma SaaS web builder para gestionar sitios, páginas, secciones y bloques con renderizado dinámico basado en JSON." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,50 +16,45 @@
     <script src="script.js" defer></script>
   </head>
   <body>
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-    <section id="authView" class="auth-shell"></section>
-
-    <section id="appView" class="app-shell hidden">
+    <div class="platform-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">DT</div>
+          <div class="brand-mark">NB</div>
           <div>
-            <h1>DealTracker</h1>
-            <p>Freelancer Business Dashboard</p>
+            <h1>NovaBuilder</h1>
+            <p>Visual CMS Platform</p>
           </div>
         </div>
 
-        <nav class="menu">
+        <nav class="menu" id="mainMenu">
           <button class="menu-item active" data-tab="dashboard">Dashboard</button>
-          <button class="menu-item" data-tab="clients">Clients</button>
-          <button class="menu-item" data-tab="projects">Projects</button>
-          <button class="menu-item" data-tab="payments">Payments</button>
-          <button class="menu-item" data-tab="reports">Reports</button>
+          <button class="menu-item" data-tab="pages">Gestor de páginas</button>
+          <button class="menu-item" data-tab="builder">Builder estructural</button>
+          <button class="menu-item" data-tab="library">Biblioteca</button>
+          <button class="menu-item" data-tab="settings">Settings</button>
+          <button class="menu-item" data-tab="seo">SEO</button>
         </nav>
       </aside>
 
       <main class="workspace">
         <header class="topbar card">
           <div>
-            <p class="eyebrow">Welcome back</p>
-            <h2>Here’s a quick look at your freelance business</h2>
+            <p class="eyebrow">SaaS Website Builder</p>
+            <h2>Plataforma CMS visual para construir, organizar y publicar páginas web</h2>
           </div>
-          <div class="topbar-actions">
-            <span id="accountChip" class="account-chip"></span>
-            <button id="switchAccountBtn" class="btn ghost">Sign in</button>
-            <button id="signOutBtn" class="btn ghost">Sign out</button>
+          <div class="chip-row">
+            <span id="siteStatusChip" class="chip"></span>
+            <span id="pagesChip" class="chip"></span>
           </div>
         </header>
 
-        <div id="guestBanner"></div>
-
-        <section class="tab-panel" id="dashboardTab"></section>
-        <section class="tab-panel hidden" id="clientsTab"></section>
-        <section class="tab-panel hidden" id="projectsTab"></section>
-        <section class="tab-panel hidden" id="paymentsTab"></section>
-        <section class="tab-panel hidden" id="reportsTab"></section>
+        <section id="dashboardTab" class="tab-panel"></section>
+        <section id="pagesTab" class="tab-panel hidden"></section>
+        <section id="builderTab" class="tab-panel hidden"></section>
+        <section id="libraryTab" class="tab-panel hidden"></section>
+        <section id="settingsTab" class="tab-panel hidden"></section>
+        <section id="seoTab" class="tab-panel hidden"></section>
       </main>
-    </section>
+    </div>
   </body>
 </html>

@@ -1,757 +1,719 @@
-const STORAGE_KEYS = {
-  session: "dealtracker::session",
-  users: "dealtracker::users"
+const SECTION_CATEGORIES = {
+  hero: "informativa",
+  about: "informativa",
+  services: "comercial",
+  features: "comercial",
+  gallery: "visual",
+  testimonials: "soporte/confianza",
+  faq: "soporte/confianza",
+  cta: "conversión",
+  contact: "conversión",
+  blogPreview: "informativa",
+  team: "soporte/confianza",
+  pricing: "comercial",
+  custom: "visual"
 };
 
-const userDataKey = (userId) => `dealtracker::user_data::${userId}`;
+const BLOCK_CATEGORIES = {
+  heading: "texto",
+  paragraph: "texto",
+  button: "acción",
+  image: "visual",
+  iconText: "compuesto",
+  card: "compuesto",
+  testimonialItem: "datos",
+  faqItem: "datos",
+  pricingCard: "datos",
+  statItem: "datos",
+  divider: "visual",
+  spacer: "visual",
+  form: "acción",
+  galleryItem: "visual"
+};
+
+const PAGE_STATUSES = ["draft", "review", "published", "archived"];
 
 const state = {
-  session: null,
   tab: "dashboard",
-  authMode: "landing",
-  authFormMode: "signin",
-  editingClientId: null,
-  data: createBlankWorkspace()
+  selectedPageId: "home",
+  selectedSectionId: "hero_1",
+  data: {
+    site: { id: "site_nova", name: "NovaBuilder Demo Site", plan: "Pro", status: "active", createdAt: "2026-01-14" },
+    pages: [
+      {
+        id: "home",
+        title: "Inicio",
+        slug: "/",
+        status: "published",
+        updatedAt: "2026-03-05",
+        sections: [
+          {
+            id: "hero_1",
+            type: "hero",
+            name: "Hero principal",
+            blocks: [
+              { id: "heading_1", type: "heading", content: { text: "Crea sitios profesionales con bloques reutilizables" } },
+              { id: "paragraph_1", type: "paragraph", content: { text: "Construye páginas, administra contenido y publica más rápido desde un builder visual escalable." } },
+              { id: "button_1", type: "button", content: { text: "Comenzar ahora", href: "#" } },
+              { id: "stat_1", type: "statItem", content: { label: "Sitios publicados", value: "1,240+" } }
+            ]
+          },
+          {
+            id: "services_1",
+            type: "services",
+            name: "Servicios",
+            blocks: [
+              { id: "heading_2", type: "heading", content: { text: "Todo lo necesario para un CMS visual moderno" } },
+              { id: "card_1", type: "card", content: { title: "Page manager", description: "Controla títulos, slugs y estados." } },
+              { id: "card_2", type: "card", content: { title: "Builder estructural", description: "Gestiona secciones y bloques por tipo." } },
+              { id: "card_3", type: "card", content: { title: "SEO integrado", description: "Optimiza title, description, robots y canonical." } }
+            ]
+          },
+          {
+            id: "faq_1",
+            type: "faq",
+            name: "FAQ",
+            blocks: [
+              { id: "faq_item_1", type: "faqItem", content: { question: "¿Puedo reutilizar bloques?", answer: "Sí, la librería permite reutilización modular en múltiples secciones." } },
+              { id: "faq_item_2", type: "faqItem", content: { question: "¿Está preparado para backend?", answer: "La estructura JSON y la separación por módulos está lista para APIs." } }
+            ]
+          },
+          {
+            id: "cta_1",
+            type: "cta",
+            name: "CTA final",
+            blocks: [
+              { id: "heading_3", type: "heading", content: { text: "Transforma tu flujo de creación web" } },
+              { id: "button_2", type: "button", content: { text: "Activar trial", href: "#" } }
+            ]
+          }
+        ]
+      },
+      {
+        id: "about",
+        title: "Nosotros",
+        slug: "/nosotros",
+        status: "review",
+        updatedAt: "2026-03-03",
+        sections: [
+          {
+            id: "about_1",
+            type: "about",
+            name: "Introducción",
+            blocks: [
+              { id: "heading_4", type: "heading", content: { text: "Equipo experto en producto y arquitectura CMS" } },
+              { id: "paragraph_2", type: "paragraph", content: { text: "Diseñamos experiencias SaaS para escalar operaciones de contenido." } },
+              { id: "image_1", type: "image", content: { src: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=900", alt: "Equipo" } }
+            ]
+          }
+        ]
+      },
+      {
+        id: "pricing",
+        title: "Precios",
+        slug: "/pricing",
+        status: "draft",
+        updatedAt: "2026-03-02",
+        sections: [
+          {
+            id: "pricing_1",
+            type: "pricing",
+            name: "Pricing",
+            blocks: [
+              { id: "pricing_card_1", type: "pricingCard", content: { plan: "Starter", price: "$19", details: "1 sitio + editor básico" } },
+              { id: "pricing_card_2", type: "pricingCard", content: { plan: "Pro", price: "$49", details: "5 sitios + bloques avanzados" } },
+              { id: "pricing_card_3", type: "pricingCard", content: { plan: "Scale", price: "$99", details: "sitios ilimitados + colaboración" } }
+            ]
+          }
+        ]
+      }
+    ],
+    media: [
+      { id: "media_1", type: "image", name: "team.jpg", url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=900" },
+      { id: "media_2", type: "image", name: "hero.jpg", url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900" }
+    ],
+    settings: {
+      branding: { logo: "NB", primaryColor: "#4655ff", accentColor: "#0f172a" },
+      contact: { email: "hola@novabuilder.io", phone: "+34 600 123 456" },
+      social: { linkedin: "https://linkedin.com", x: "https://x.com", instagram: "https://instagram.com" }
+    },
+    seo: {
+      title: "NovaBuilder | Plataforma CMS visual",
+      description: "Crea y administra páginas web con arquitectura modular y renderizado dinámico.",
+      keywords: "cms,website builder,page builder,saas",
+      ogImage: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200",
+      robots: "index,follow",
+      canonical: "https://novabuilder.io"
+    }
+  }
+};
+
+const sectionRegistry = {
+  hero: { label: "Hero", description: "Encabezado principal y propuesta de valor." },
+  about: { label: "About / Introducción", description: "Contexto y narrativa del proyecto." },
+  services: { label: "Servicios", description: "Oferta principal de servicios o soluciones." },
+  features: { label: "Features / Beneficios", description: "Beneficios y diferenciadores." },
+  gallery: { label: "Galería", description: "Muestra visual de trabajos o producto." },
+  testimonials: { label: "Testimonios", description: "Prueba social y confianza." },
+  faq: { label: "FAQ", description: "Preguntas frecuentes para soporte." },
+  cta: { label: "CTA final", description: "Sección de conversión con acción principal." },
+  contact: { label: "Contacto", description: "Datos y formulario de contacto." },
+  blogPreview: { label: "Blog preview", description: "Vista rápida de artículos recientes." },
+  team: { label: "Equipo", description: "Presentación de integrantes y roles." },
+  pricing: { label: "Pricing", description: "Planes y tarjetas de precios." },
+  custom: { label: "Custom section", description: "Sección personalizada extensible." }
+};
+
+const blockRegistry = {
+  heading: (content) => `<h3>${content.text || "Heading"}</h3>`,
+  paragraph: (content) => `<p>${content.text || "Paragraph"}</p>`,
+  button: (content) => `<a class="preview-btn" href="${content.href || "#"}">${content.text || "Button"}</a>`,
+  image: (content) => `<img class="preview-image" src="${content.src || ""}" alt="${content.alt || "image"}" />`,
+  iconText: (content) => `<div class="icon-text"><span>${content.icon || "•"}</span><p>${content.text || "Icon text"}</p></div>`,
+  card: (content) => `<article class="mini-card"><h4>${content.title || "Card"}</h4><p>${content.description || "Descripción"}</p></article>`,
+  testimonialItem: (content) => `<blockquote class="testimonial">“${content.quote || "Testimonio"}”<span>${content.author || "Cliente"}</span></blockquote>`,
+  faqItem: (content) => `<details class="faq-item" open><summary>${content.question || "Pregunta"}</summary><p>${content.answer || "Respuesta"}</p></details>`,
+  pricingCard: (content) => `<article class="pricing-card"><h4>${content.plan || "Plan"}</h4><p class="price">${content.price || "$0"}</p><p>${content.details || "Detalles"}</p></article>`,
+  statItem: (content) => `<div class="stat-item"><p>${content.label || "Métrica"}</p><strong>${content.value || "0"}</strong></div>`,
+  divider: () => `<hr class="preview-divider" />`,
+  spacer: () => `<div class="preview-spacer"></div>`,
+  form: (content) => `<form class="preview-form"><input placeholder="${content.placeholder || "Email"}" /><button type="button">${content.cta || "Enviar"}</button></form>`,
+  galleryItem: (content) => `<figure class="gallery-item"><img src="${content.src || ""}" alt="${content.alt || "galería"}" /><figcaption>${content.caption || "Item"}</figcaption></figure>`
 };
 
 const els = {
-  authView: document.getElementById("authView"),
-  appView: document.getElementById("appView"),
-  toast: document.getElementById("toast"),
-  guestBanner: document.getElementById("guestBanner"),
-  accountChip: document.getElementById("accountChip"),
-  switchAccountBtn: document.getElementById("switchAccountBtn"),
-  signOutBtn: document.getElementById("signOutBtn")
+  menu: document.getElementById("mainMenu"),
+  siteStatusChip: document.getElementById("siteStatusChip"),
+  pagesChip: document.getElementById("pagesChip"),
+  tabs: {
+    dashboard: document.getElementById("dashboardTab"),
+    pages: document.getElementById("pagesTab"),
+    builder: document.getElementById("builderTab"),
+    library: document.getElementById("libraryTab"),
+    settings: document.getElementById("settingsTab"),
+    seo: document.getElementById("seoTab")
+  }
 };
 
 bootstrap();
 
 function bootstrap() {
-  hydrateSession();
-  bindGlobalEvents();
+  bindEvents();
   render();
 }
 
-function createBlankWorkspace() {
-  return {
-    users: [],
-    clients: [],
-    projects: [],
-    payments: [],
-    activityLogs: []
-  };
-}
-
-function createGuestWorkspace() {
-  const clientId = crypto.randomUUID();
-  const projectId = crypto.randomUUID();
-  return {
-    users: [],
-    clients: [
-      {
-        id: clientId,
-        user_id: "guest",
-        name: "Aurora Studio",
-        email: "team@aurora.studio",
-        phone: "+1 415 555 0147",
-        company: "Aurora Studio"
-      }
-    ],
-    projects: [
-      {
-        id: projectId,
-        client_id: clientId,
-        name: "Website Revamp",
-        description: "Modern redesign focused on conversion and lead capture.",
-        status: "activo",
-        price: 3400,
-        start_date: isoDate(-12),
-        end_date: isoDate(18)
-      }
-    ],
-    payments: [
-      {
-        id: crypto.randomUUID(),
-        project_id: projectId,
-        amount: 1200,
-        status: "pagado",
-        due_date: isoDate(-5),
-        paid_date: isoDate(-3)
-      }
-    ],
-    activityLogs: [
-      {
-        id: crypto.randomUUID(),
-        user_id: "guest",
-        action: "created project",
-        created_at: new Date().toISOString()
-      }
-    ]
-  };
-}
-
-function isoDate(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
-}
-
-function hydrateSession() {
-  const rawSession = localStorage.getItem(STORAGE_KEYS.session);
-  if (!rawSession) {
-    state.session = null;
-    state.data = createGuestWorkspace();
-    return;
-  }
-
-  const session = JSON.parse(rawSession);
-  if (session.mode === "account" && session.user?.id) {
-    const persistedData = JSON.parse(localStorage.getItem(userDataKey(session.user.id)) || "null");
-    state.session = session;
-    state.data = persistedData || createBlankWorkspace();
-    return;
-  }
-
-  if (session.mode === "guest") {
-    state.session = session;
-    state.data = createGuestWorkspace();
-    return;
-  }
-
-  state.session = null;
-  state.data = createGuestWorkspace();
-}
-
-function bindGlobalEvents() {
-  els.switchAccountBtn.addEventListener("click", () => {
-    if (state.session?.mode === "account") return;
-    state.authMode = "form";
-    state.authFormMode = "signin";
+function bindEvents() {
+  els.menu.addEventListener("click", (event) => {
+    const button = event.target.closest(".menu-item");
+    if (!button) return;
+    state.tab = button.dataset.tab;
     render();
   });
-
-  els.signOutBtn.addEventListener("click", () => {
-    if (!state.session) return;
-    localStorage.removeItem(STORAGE_KEYS.session);
-    state.session = null;
-    state.authMode = "landing";
-    state.data = createGuestWorkspace();
-    render();
-  });
-}
-
-function persistWorkspace() {
-  if (state.session?.mode === "account") {
-    localStorage.setItem(userDataKey(state.session.user.id), JSON.stringify(state.data));
-  }
-}
-
-function persistSession() {
-  if (state.session) {
-    localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(state.session));
-  }
 }
 
 function render() {
-  if (!state.session) {
-    renderAuth();
-    return;
-  }
-
-  els.authView.classList.add("hidden");
-  els.appView.classList.remove("hidden");
-
-  els.accountChip.textContent =
-    state.session.mode === "guest" ? "Guest mode" : `${state.session.user.name}`;
-  els.switchAccountBtn.classList.toggle("hidden", state.session.mode === "account");
-  els.signOutBtn.textContent = state.session.mode === "guest" ? "Exit guest" : "Sign out";
-
-  renderGuestBanner();
-  renderMenu();
+  renderMenuState();
+  renderTopbar();
   renderDashboard();
-  renderClients();
-  renderProjects();
-  renderPayments();
-  renderReports();
+  renderPagesManager();
+  renderBuilder();
+  renderLibrary();
+  renderSettings();
+  renderSEO();
 }
 
-function renderAuth() {
-  els.authView.classList.remove("hidden");
-  els.appView.classList.add("hidden");
-
-  if (state.authMode === "landing") {
-    els.authView.innerHTML = `
-      <article class="auth-card auth-landing">
-        <div class="auth-info">
-          <p class="eyebrow">DealTracker</p>
-          <h2>The freelance command center for your clients and revenue</h2>
-          <p>Create clients, manage projects, register payments, and export clean reports in a single web dashboard.</p>
-        </div>
-        <div class="auth-actions">
-          <button class="btn primary" id="continueGuest">Continue as guest</button>
-          <button class="btn ghost" id="signInCta">Sign in</button>
-          <button class="btn ghost" id="createAccountCta">Create account</button>
-          <p class="muted">Your guest data won’t be saved. Create an account to keep your work safe.</p>
-        </div>
-      </article>
-    `;
-
-    document.getElementById("continueGuest").onclick = () => {
-      state.session = {
-        mode: "guest",
-        user: {
-          id: "guest",
-          name: "Guest Freelancer",
-          email: null,
-          created_at: new Date().toISOString()
-        }
-      };
-      state.data = createGuestWorkspace();
-      persistSession();
-      render();
-    };
-
-    document.getElementById("signInCta").onclick = () => {
-      state.authMode = "form";
-      state.authFormMode = "signin";
-      renderAuth();
-    };
-
-    document.getElementById("createAccountCta").onclick = () => {
-      state.authMode = "form";
-      state.authFormMode = "signup";
-      renderAuth();
-    };
-
-    return;
-  }
-
-  const signup = state.authFormMode === "signup";
-  els.authView.innerHTML = `
-    <article class="auth-card">
-      <div class="auth-info">
-        <p class="eyebrow">DealTracker</p>
-        <h2>${signup ? "Create your account" : "Welcome back"}</h2>
-        <p>${signup ? "Create an account to keep your work safe and available whenever you come back." : "Sign in to continue with your saved clients, projects, and payment history."}</p>
-      </div>
-      <form id="authForm" class="card auth-form">
-        <h3>${signup ? "Create account" : "Sign in"}</h3>
-        ${signup ? '<label>Full name<input name="name" required /></label>' : ""}
-        <label>Email<input name="email" type="email" required /></label>
-        <label>Password<input name="password" type="password" minlength="6" required /></label>
-        <div class="actions">
-          <button class="btn primary" type="submit">${signup ? "Create account" : "Sign in"}</button>
-          <button class="btn ghost" type="button" id="backLanding">Back</button>
-          <button class="btn ghost" type="button" id="switchMode">${signup ? "I already have an account" : "Need an account?"}</button>
-        </div>
-      </form>
-    </article>
-  `;
-
-  document.getElementById("backLanding").onclick = () => {
-    state.authMode = "landing";
-    renderAuth();
-  };
-
-  document.getElementById("switchMode").onclick = () => {
-    state.authFormMode = signup ? "signin" : "signup";
-    renderAuth();
-  };
-
-  document.getElementById("authForm").onsubmit = (event) => {
-    event.preventDefault();
-    const payload = Object.fromEntries(new FormData(event.target));
-    signup ? createAccount(payload) : signIn(payload);
-  };
-}
-
-function createAccount(payload) {
-  const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users) || "[]");
-  if (users.some((entry) => entry.email.toLowerCase() === payload.email.toLowerCase())) {
-    notify("An account with this email already exists.");
-    return;
-  }
-
-  const user = {
-    id: crypto.randomUUID(),
-    name: payload.name.trim(),
-    email: payload.email.trim().toLowerCase(),
-    password_hash: hashPassword(payload.password),
-    created_at: new Date().toISOString()
-  };
-
-  users.push(user);
-  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
-
-  state.session = { mode: "account", user };
-  state.data = createBlankWorkspace();
-  persistSession();
-  persistWorkspace();
-  logActivity("created account");
-  notify("Account created successfully.");
-  render();
-}
-
-function signIn(payload) {
-  const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users) || "[]");
-  const user = users.find(
-    (entry) =>
-      entry.email.toLowerCase() === payload.email.toLowerCase() &&
-      entry.password_hash === hashPassword(payload.password)
-  );
-
-  if (!user) {
-    notify("Invalid email or password.");
-    return;
-  }
-
-  state.session = { mode: "account", user };
-  state.data = JSON.parse(localStorage.getItem(userDataKey(user.id)) || "null") || createBlankWorkspace();
-  persistSession();
-  notify("Welcome back.");
-  render();
-}
-
-function hashPassword(password) {
-  return btoa(password);
-}
-
-function renderMenu() {
-  document.querySelectorAll(".menu-item").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.tab === state.tab);
-    btn.onclick = () => {
-      state.tab = btn.dataset.tab;
-      render();
-    };
+function renderMenuState() {
+  [...els.menu.querySelectorAll(".menu-item")].forEach((item) => {
+    item.classList.toggle("active", item.dataset.tab === state.tab);
   });
 
-  document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.add("hidden"));
-  document.getElementById(`${state.tab}Tab`).classList.remove("hidden");
+  Object.entries(els.tabs).forEach(([key, node]) => {
+    node.classList.toggle("hidden", key !== state.tab);
+  });
 }
 
-function renderGuestBanner() {
-  if (state.session.mode !== "guest") {
-    els.guestBanner.innerHTML = "";
-    return;
-  }
-
-  els.guestBanner.innerHTML = `
-    <article class="banner">
-      <div>
-        <strong>You’re browsing in guest mode.</strong>
-        <p class="muted">Your guest data won’t be saved. Create an account to keep your work safe.</p>
-      </div>
-      <button class="btn primary" id="guestToAccount">Create account</button>
-    </article>
-  `;
-
-  document.getElementById("guestToAccount").onclick = () => {
-    state.session = null;
-    state.authMode = "form";
-    state.authFormMode = "signup";
-    render();
-  };
+function renderTopbar() {
+  els.siteStatusChip.textContent = `Estado del sitio: ${state.data.site.status}`;
+  els.pagesChip.textContent = `Páginas: ${state.data.pages.length}`;
 }
 
 function renderDashboard() {
-  const dashboard = document.getElementById("dashboardTab");
-  const monthlyIncome = getIncomeForCurrentMonth();
-  const activeProjects = state.data.projects.filter((item) => item.status === "activo").length;
-  const pendingPayments = state.data.payments.filter((item) => computePaymentStatus(item) !== "pagado").length;
-  const activeClients = getActiveClients().length;
+  const totalSections = state.data.pages.reduce((sum, page) => sum + page.sections.length, 0);
+  const totalBlocks = state.data.pages.reduce((sum, page) => sum + page.sections.reduce((acc, sec) => acc + sec.blocks.length, 0), 0);
+  const publishedPages = state.data.pages.filter((p) => p.status === "published").length;
 
-  dashboard.innerHTML = `
-    <section class="grid-4">
-      <article class="card metric"><p class="muted">Monthly income</p><h3>${money(monthlyIncome)}</h3></article>
-      <article class="card metric"><p class="muted">Active projects</p><h3>${activeProjects}</h3></article>
-      <article class="card metric"><p class="muted">Pending payments</p><h3>${pendingPayments}</h3></article>
-      <article class="card metric"><p class="muted">Active clients</p><h3>${activeClients}</h3></article>
-    </section>
+  els.tabs.dashboard.innerHTML = `
+    <div class="card hierarchy-card">
+      <h3>Jerarquía del CMS</h3>
+      <p class="muted">Sitio → Páginas → Secciones → Bloques → Publicación</p>
+      <div class="hierarchy-flow">
+        <span>Site</span><span>Pages</span><span>Sections</span><span>Blocks</span><span>Publish</span>
+      </div>
+    </div>
 
-    <section class="layout-2">
+    <div class="grid-4">
+      <article class="card metric"><p class="eyebrow">Site</p><h3>${state.data.site.name}</h3></article>
+      <article class="card metric"><p class="eyebrow">Páginas</p><h3>${state.data.pages.length}</h3></article>
+      <article class="card metric"><p class="eyebrow">Publicadas</p><h3>${publishedPages}</h3></article>
+      <article class="card metric"><p class="eyebrow">Bloques</p><h3>${totalBlocks}</h3></article>
+    </div>
+
+    <div class="layout-2">
       <article class="card">
-        <h3>Revenue by client</h3>
-        ${renderRevenueByClient()}
+        <h3>Páginas recientes</h3>
+        <ul class="stack-list">
+          ${state.data.pages
+            .slice()
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+            .map((page) => `<li><strong>${page.title}</strong><span>${page.slug}</span><span class="badge status-${page.status}">${page.status}</span></li>`)
+            .join("")}
+        </ul>
       </article>
+
       <article class="card">
-        <h3>Recent activity</h3>
-        ${renderActivity()}
+        <h3>Secciones disponibles (${Object.keys(sectionRegistry).length})</h3>
+        <ul class="stack-list">
+          ${Object.entries(sectionRegistry)
+            .map(([type, section]) => `<li><strong>${section.label}</strong><span>${type}</span><span class="badge">${SECTION_CATEGORIES[type]}</span></li>`)
+            .join("")}
+        </ul>
       </article>
-    </section>
-  `;
-}
+    </div>
 
-function renderClients() {
-  const clientsTab = document.getElementById("clientsTab");
-  const editingClient = state.data.clients.find((item) => item.id === state.editingClientId);
-
-  clientsTab.innerHTML = `
-    <section class="layout-2">
-      <form id="clientForm" class="card">
-        <h3>${editingClient ? "Edit client" : "Create client"}</h3>
-        <label>Name<input name="name" value="${editingClient?.name || ""}" required /></label>
-        <label>Email<input name="email" type="email" value="${editingClient?.email || ""}" required /></label>
-        <label>Phone<input name="phone" value="${editingClient?.phone || ""}" required /></label>
-        <label>Company<input name="company" value="${editingClient?.company || ""}" required /></label>
-        <div class="actions">
-          <button class="btn primary" type="submit">${editingClient ? "Update client" : "Save client"}</button>
-          ${editingClient ? '<button class="btn ghost" type="button" id="cancelEditClient">Cancel</button>' : ""}
-        </div>
-      </form>
-      <article class="card">
-        <h3>Clients</h3>
-        ${state.data.clients.length ? `
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th></th></tr></thead>
-              <tbody>
-                ${state.data.clients
-                  .map(
-                    (item) => `
-                    <tr>
-                      <td>${item.name}</td>
-                      <td>${item.company}</td>
-                      <td>${item.email}</td>
-                      <td>${item.phone}</td>
-                      <td><button class="btn ghost js-edit-client" data-client-id="${item.id}">Edit</button></td>
-                    </tr>
-                  `
-                  )
-                  .join("")}
-              </tbody>
-            </table>
-          </div>
-        ` : '<p class="muted">No clients yet. Create your first client to get started.</p>'}
-      </article>
-    </section>
-  `;
-
-  document.getElementById("clientForm").onsubmit = (event) => {
-    event.preventDefault();
-    const payload = Object.fromEntries(new FormData(event.target));
-    if (editingClient) {
-      Object.assign(editingClient, payload);
-      logActivity("updated client");
-      state.editingClientId = null;
-      commitMutation("Client updated successfully.");
-      return;
-    }
-
-    state.data.clients.push({
-      id: crypto.randomUUID(),
-      user_id: state.session.user.id,
-      ...payload
-    });
-    logActivity("created client");
-    commitMutation("Client created successfully.");
-  };
-
-  if (editingClient) {
-    document.getElementById("cancelEditClient").onclick = () => {
-      state.editingClientId = null;
-      renderClients();
-    };
-  }
-
-  clientsTab.querySelectorAll(".js-edit-client").forEach((button) => {
-    button.onclick = () => {
-      state.editingClientId = button.dataset.clientId;
-      renderClients();
-    };
-  });
-}
-
-function renderProjects() {
-  const projectsTab = document.getElementById("projectsTab");
-  const clientOptions = state.data.clients
-    .map((client) => `<option value="${client.id}">${client.name} — ${client.company}</option>`)
-    .join("");
-
-  projectsTab.innerHTML = `
-    <section class="layout-2">
-      <form id="projectForm" class="card">
-        <h3>Create project</h3>
-        <label>Project name<input name="name" required /></label>
-        <label>Client<select name="client_id" required><option value="">Select client</option>${clientOptions}</select></label>
-        <label>Status<select name="status" required><option value="activo">activo</option><option value="completado">completado</option><option value="cancelado">cancelado</option></select></label>
-        <label>Price<input name="price" type="number" min="0" step="0.01" required /></label>
-        <label>Start date<input name="start_date" type="date" required /></label>
-        <label>End date<input name="end_date" type="date" required /></label>
-        <label>Description<textarea name="description" required></textarea></label>
-        <button class="btn primary" type="submit">Save project</button>
-      </form>
-      <article class="card">
-        <h3>Projects</h3>
-        ${state.data.projects.length ? `
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Price</th><th>Timeline</th><th>Balance</th></tr></thead>
-              <tbody>
-                ${state.data.projects
-                  .map((project) => {
-                    const paid = getProjectPaid(project.id);
-                    const balance = Math.max(Number(project.price) - paid, 0);
-                    return `
-                      <tr>
-                        <td>
-                          <strong>${project.name}</strong>
-                          <div class="muted">${project.description}</div>
-                        </td>
-                        <td>${clientName(project.client_id)}</td>
-                        <td><span class="badge status-${project.status}">${project.status}</span></td>
-                        <td>${money(project.price)}</td>
-                        <td>${project.start_date} → ${project.end_date}</td>
-                        <td>${money(balance)}</td>
-                      </tr>
-                    `;
-                  })
-                  .join("")}
-              </tbody>
-            </table>
-          </div>
-        ` : '<p class="muted">No projects yet. Create your first project after adding at least one client.</p>'}
-      </article>
-    </section>
-  `;
-
-  document.getElementById("projectForm").onsubmit = (event) => {
-    event.preventDefault();
-    if (!state.data.clients.length) {
-      notify("Please create a client before creating a project.");
-      return;
-    }
-
-    const payload = Object.fromEntries(new FormData(event.target));
-    state.data.projects.push({
-      id: crypto.randomUUID(),
-      ...payload,
-      price: Number(payload.price)
-    });
-    logActivity("created project");
-    commitMutation("Project created successfully.");
-  };
-}
-
-function renderPayments() {
-  const paymentsTab = document.getElementById("paymentsTab");
-  const projectOptions = state.data.projects
-    .map((project) => `<option value="${project.id}">${project.name}</option>`)
-    .join("");
-
-  paymentsTab.innerHTML = `
-    <section class="layout-2">
-      <form id="paymentForm" class="card">
-        <h3>Register payment</h3>
-        <label>Project<select name="project_id" required><option value="">Select project</option>${projectOptions}</select></label>
-        <label>Amount<input name="amount" type="number" min="0" step="0.01" required /></label>
-        <label>Status<select name="status" required><option value="pendiente">pendiente</option><option value="pagado">pagado</option><option value="retrasado">retrasado</option></select></label>
-        <label>Due date<input name="due_date" type="date" required /></label>
-        <label>Paid date<input name="paid_date" type="date" /></label>
-        <button class="btn primary" type="submit">Save payment</button>
-      </form>
-      <article class="card">
-        <h3>Payment history</h3>
-        ${state.data.payments.length ? `
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Project</th><th>Amount</th><th>Status</th><th>Due</th><th>Paid</th></tr></thead>
-              <tbody>
-                ${state.data.payments
-                  .slice()
-                  .reverse()
-                  .map((payment) => {
-                    const status = computePaymentStatus(payment);
-                    return `
-                      <tr>
-                        <td>${projectName(payment.project_id)}</td>
-                        <td>${money(payment.amount)}</td>
-                        <td><span class="badge payment-${status}">${status}</span></td>
-                        <td>${payment.due_date || "—"}</td>
-                        <td>${payment.paid_date || "—"}</td>
-                      </tr>
-                    `;
-                  })
-                  .join("")}
-              </tbody>
-            </table>
-          </div>
-          <p><strong>Total paid:</strong> ${money(getTotalPaid())} · <strong>Pending balance:</strong> ${money(getPendingBalance())}</p>
-        ` : '<p class="muted">No payments yet. Register your first payment to track incoming cash.</p>'}
-      </article>
-    </section>
-  `;
-
-  document.getElementById("paymentForm").onsubmit = (event) => {
-    event.preventDefault();
-    const payload = Object.fromEntries(new FormData(event.target));
-    state.data.payments.push({
-      id: crypto.randomUUID(),
-      ...payload,
-      amount: Number(payload.amount)
-    });
-    logActivity("registered payment");
-    commitMutation("Payment recorded successfully.");
-  };
-}
-
-function renderReports() {
-  const reportsTab = document.getElementById("reportsTab");
-  reportsTab.innerHTML = `
     <article class="card">
-      <h3>Export reports</h3>
-      <p class="muted">Download your records in CSV format for accounting, backups, and external analysis.</p>
-      <div class="actions">
-        <button class="btn ghost" data-export="clients">Export clients</button>
-        <button class="btn ghost" data-export="projects">Export projects</button>
-        <button class="btn ghost" data-export="payments">Export payments</button>
+      <h3>Estado general del proyecto</h3>
+      <p class="muted">Esta plataforma servirá para construir y administrar páginas web desde un panel, sin tocar código.</p>
+      <p class="muted">Definición: Plataforma CMS que permite gestionar páginas mediante secciones y bloques reutilizables, con edición visual, render dinámico y publicación.</p>
+      <p class="muted">Total de secciones actuales: <strong>${totalSections}</strong>.</p>
+    </article>
+  `;
+}
+
+function renderPagesManager() {
+  els.tabs.pages.innerHTML = `
+    <article class="card">
+      <div class="row between wrap">
+        <div>
+          <h3>Gestor de páginas</h3>
+          <p class="muted">Crear, editar, organizar y publicar páginas desde un panel unificado.</p>
+        </div>
+        <button class="btn primary" id="createPageBtn">+ Nueva página</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th>Slug</th>
+              <th>Estado</th>
+              <th>Secciones</th>
+              <th>Actualizado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.data.pages
+              .map(
+                (page) => `
+                <tr>
+                  <td>${page.title}</td>
+                  <td>${page.slug}</td>
+                  <td><span class="badge status-${page.status}">${page.status}</span></td>
+                  <td>${page.sections.length}</td>
+                  <td>${page.updatedAt}</td>
+                  <td class="action-row">
+                    <button class="btn ghost small" data-action="edit-page" data-page-id="${page.id}">Editar</button>
+                    <button class="btn ghost small" data-action="open-builder" data-page-id="${page.id}">Builder</button>
+                    <button class="btn ghost small" data-action="change-status" data-page-id="${page.id}">Estado</button>
+                  </td>
+                </tr>
+              `
+              )
+              .join("")}
+          </tbody>
+        </table>
       </div>
     </article>
   `;
 
-  reportsTab.querySelectorAll("[data-export]").forEach((button) => {
+  document.getElementById("createPageBtn").onclick = () => createPage();
+
+  els.tabs.pages.querySelectorAll("button[data-action='open-builder']").forEach((button) => {
     button.onclick = () => {
-      const tableName = button.dataset.export;
-      exportTable(tableName, state.data[tableName]);
+      state.selectedPageId = button.dataset.pageId;
+      state.tab = "builder";
+      render();
+    };
+  });
+
+  els.tabs.pages.querySelectorAll("button[data-action='edit-page']").forEach((button) => {
+    button.onclick = () => {
+      const page = getPage(button.dataset.pageId);
+      if (!page) return;
+      const title = window.prompt("Nuevo título de página", page.title);
+      if (!title) return;
+      page.title = title;
+      page.slug = `/${slugify(title)}`;
+      page.updatedAt = getToday();
+      render();
+    };
+  });
+
+  els.tabs.pages.querySelectorAll("button[data-action='change-status']").forEach((button) => {
+    button.onclick = () => {
+      const page = getPage(button.dataset.pageId);
+      if (!page) return;
+      const nextStatus = window.prompt(`Estado (${PAGE_STATUSES.join(", ")})`, page.status);
+      if (!nextStatus || !PAGE_STATUSES.includes(nextStatus)) return;
+      page.status = nextStatus;
+      page.updatedAt = getToday();
+      render();
     };
   });
 }
 
-function renderRevenueByClient() {
-  if (!state.data.clients.length) {
-    return '<p class="muted">No clients yet. Create your first client to start tracking revenue by client.</p>';
-  }
-
-  return `
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Client</th><th>Paid revenue</th></tr></thead>
-        <tbody>
-          ${state.data.clients
-            .map((client) => {
-              const revenue = state.data.projects
-                .filter((project) => project.client_id === client.id)
-                .reduce((sum, project) => sum + getProjectPaid(project.id), 0);
-
-              return `<tr><td>${client.name}</td><td>${money(revenue)}</td></tr>`;
-            })
-            .join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
+function createPage() {
+  const title = window.prompt("Título de la nueva página", "Nueva página");
+  if (!title) return;
+  state.data.pages.push({
+    id: `page_${crypto.randomUUID().slice(0, 8)}`,
+    title,
+    slug: `/${slugify(title)}`,
+    status: "draft",
+    updatedAt: getToday(),
+    sections: []
+  });
+  render();
 }
 
-function renderActivity() {
-  if (!state.data.activityLogs.length) {
-    return '<p class="muted">No activity yet. Start by adding a client or creating a project.</p>';
-  }
+function renderBuilder() {
+  const page = getPage(state.selectedPageId) || state.data.pages[0];
+  if (!page) return;
+  state.selectedPageId = page.id;
 
+  const section = page.sections.find((item) => item.id === state.selectedSectionId) || page.sections[0];
+  state.selectedSectionId = section?.id || "";
+
+  els.tabs.builder.innerHTML = `
+    <div class="builder-grid">
+      <article class="card">
+        <div class="row between align-start wrap">
+          <div>
+            <h3>Constructor estructural</h3>
+            <p class="muted">Página: <strong>${page.title}</strong> (${page.slug})</p>
+            <p class="muted">Estado: <span class="badge status-${page.status}">${page.status}</span></p>
+          </div>
+          <select id="builderPageSelect">
+            ${state.data.pages.map((item) => `<option value="${item.id}" ${item.id === page.id ? "selected" : ""}>${item.title}</option>`).join("")}
+          </select>
+        </div>
+
+        <div class="actions">
+          <button class="btn ghost small" id="publishPageBtn">Publicar página</button>
+          <button class="btn ghost small" id="archivePageBtn">Archivar</button>
+        </div>
+
+        <div class="section-list">
+          ${page.sections
+            .map(
+              (item, index) => `
+                <div class="section-row ${item.id === section?.id ? "active" : ""}">
+                  <button class="section-item" data-section-id="${item.id}">
+                    <span>#${index + 1} ${item.name}</span>
+                    <small>${item.type} · ${SECTION_CATEGORIES[item.type] || "sin categoría"}</small>
+                  </button>
+                  <div class="mini-actions">
+                    <button class="btn ghost tiny" data-action="up" data-section-id="${item.id}">↑</button>
+                    <button class="btn ghost tiny" data-action="down" data-section-id="${item.id}">↓</button>
+                    <button class="btn ghost tiny" data-action="edit" data-section-id="${item.id}">✎</button>
+                  </div>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+        <button class="btn ghost" id="addSectionBtn">+ Añadir sección</button>
+      </article>
+
+      <article class="card preview-card">
+        <h3>Preview dinámico</h3>
+        <div class="preview-canvas">${renderPagePreview(page)}</div>
+      </article>
+
+      <article class="card">
+        <h3>Panel de configuración</h3>
+        ${section ? renderSectionConfig(section) : `<p class="muted">Esta página aún no tiene secciones.</p>`}
+      </article>
+    </div>
+  `;
+
+  document.getElementById("builderPageSelect").onchange = (event) => {
+    state.selectedPageId = event.target.value;
+    state.selectedSectionId = "";
+    render();
+  };
+
+  document.getElementById("addSectionBtn").onclick = () => addSection(page);
+  document.getElementById("publishPageBtn").onclick = () => updatePageStatus(page, "published");
+  document.getElementById("archivePageBtn").onclick = () => updatePageStatus(page, "archived");
+
+  els.tabs.builder.querySelectorAll(".section-item").forEach((button) => {
+    button.onclick = () => {
+      state.selectedSectionId = button.dataset.sectionId;
+      render();
+    };
+  });
+
+  els.tabs.builder.querySelectorAll("button[data-action='up']").forEach((button) => {
+    button.onclick = () => moveSection(page, button.dataset.sectionId, -1);
+  });
+
+  els.tabs.builder.querySelectorAll("button[data-action='down']").forEach((button) => {
+    button.onclick = () => moveSection(page, button.dataset.sectionId, 1);
+  });
+
+  els.tabs.builder.querySelectorAll("button[data-action='edit']").forEach((button) => {
+    button.onclick = () => editSectionTitle(page, button.dataset.sectionId);
+  });
+
+  els.tabs.builder.querySelectorAll("button[data-action='edit-block']").forEach((button) => {
+    button.onclick = () => editBlockContent(page, section, button.dataset.blockId);
+  });
+}
+
+function renderSectionConfig(section) {
   return `
-    <ul class="activity-list">
-      ${state.data.activityLogs
-        .slice()
-        .reverse()
-        .slice(0, 8)
+    <p class="muted">Sección seleccionada: <strong>${section.name}</strong></p>
+    <p class="muted">Tipo: ${section.type} · categoría: ${SECTION_CATEGORIES[section.type] || "sin categoría"}</p>
+    <ul class="stack-list compact">
+      ${section.blocks
         .map(
-          (log) =>
-            `<li><strong>${log.action}</strong><span class="muted">${new Date(log.created_at).toLocaleString()}</span></li>`
+          (block) => `
+          <li>
+            <strong>${block.type}</strong>
+            <span>${BLOCK_CATEGORIES[block.type] || "sin categoría"}</span>
+            <button class="btn ghost tiny" data-action="edit-block" data-block-id="${block.id}">Editar contenido</button>
+          </li>`
         )
         .join("")}
     </ul>
   `;
 }
 
-function commitMutation(message) {
-  persistWorkspace();
-  notify(message);
+function addSection(page) {
+  const type = window.prompt("Type de sección", "custom");
+  if (!type) return;
+
+  page.sections.push({
+    id: `section_${crypto.randomUUID().slice(0, 8)}`,
+    type,
+    name: sectionRegistry[type]?.label || "Custom section",
+    blocks: [{ id: `heading_${crypto.randomUUID().slice(0, 6)}`, type: "heading", content: { text: `Nueva sección ${type}` } }]
+  });
+
+  page.updatedAt = getToday();
   render();
 }
 
-function logActivity(action) {
-  state.data.activityLogs.push({
-    id: crypto.randomUUID(),
-    user_id: state.session.user.id,
-    action,
-    created_at: new Date().toISOString()
-  });
+function moveSection(page, sectionId, step) {
+  const index = page.sections.findIndex((item) => item.id === sectionId);
+  const targetIndex = index + step;
+  if (index < 0 || targetIndex < 0 || targetIndex >= page.sections.length) return;
+  [page.sections[index], page.sections[targetIndex]] = [page.sections[targetIndex], page.sections[index]];
+  page.updatedAt = getToday();
+  render();
 }
 
-function computePaymentStatus(payment) {
-  if (payment.status === "pagado") return "pagado";
-  if (payment.paid_date) return "pagado";
-  if (payment.due_date && new Date(payment.due_date) < new Date()) return "retrasado";
-  return payment.status || "pendiente";
+function editSectionTitle(page, sectionId) {
+  const section = page.sections.find((item) => item.id === sectionId);
+  if (!section) return;
+  const name = window.prompt("Nuevo nombre de sección", section.name);
+  if (!name) return;
+  section.name = name;
+  page.updatedAt = getToday();
+  render();
 }
 
-function clientName(clientId) {
-  return state.data.clients.find((client) => client.id === clientId)?.name || "Unknown client";
-}
-
-function projectName(projectId) {
-  return state.data.projects.find((project) => project.id === projectId)?.name || "Unknown project";
-}
-
-function getProjectPaid(projectId) {
-  return state.data.payments
-    .filter((payment) => payment.project_id === projectId && computePaymentStatus(payment) === "pagado")
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
-}
-
-function getTotalPaid() {
-  return state.data.payments
-    .filter((payment) => computePaymentStatus(payment) === "pagado")
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
-}
-
-function getPendingBalance() {
-  return state.data.projects.reduce((sum, project) => {
-    const pending = Math.max(Number(project.price) - getProjectPaid(project.id), 0);
-    return sum + pending;
-  }, 0);
-}
-
-function getIncomeForCurrentMonth() {
-  const now = new Date();
-  return state.data.payments
-    .filter((payment) => computePaymentStatus(payment) === "pagado" && payment.paid_date)
-    .filter((payment) => {
-      const paidDate = new Date(payment.paid_date);
-      return paidDate.getMonth() === now.getMonth() && paidDate.getFullYear() === now.getFullYear();
-    })
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
-}
-
-function getActiveClients() {
-  const activeClientIds = new Set(state.data.projects.filter((project) => project.status === "activo").map((project) => project.client_id));
-  return state.data.clients.filter((client) => activeClientIds.has(client.id));
-}
-
-function money(value) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value) || 0);
-}
-
-function notify(message) {
-  els.toast.textContent = message;
-  els.toast.classList.add("show");
-  setTimeout(() => els.toast.classList.remove("show"), 1800);
-}
-
-function exportTable(tableName, rows) {
-  if (!rows.length) {
-    notify(`No ${tableName} to export.`);
-    return;
+function editBlockContent(page, section, blockId) {
+  const block = section?.blocks.find((item) => item.id === blockId);
+  if (!block) return;
+  const raw = window.prompt("Contenido JSON del bloque", JSON.stringify(block.content || {}, null, 2));
+  if (!raw) return;
+  try {
+    block.content = JSON.parse(raw);
+    page.updatedAt = getToday();
+    render();
+  } catch {
+    window.alert("JSON inválido. No se aplicaron cambios.");
   }
+}
 
-  const headers = Object.keys(rows[0]);
-  const lines = rows.map((row) => headers.map((key) => JSON.stringify(row[key] ?? "")).join(","));
-  const csv = [headers.join(","), ...lines].join("\n");
+function updatePageStatus(page, status) {
+  page.status = status;
+  page.updatedAt = getToday();
+  render();
+}
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${tableName}-report.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-  notify(`${tableName[0].toUpperCase() + tableName.slice(1)} exported successfully.`);
+function renderPagePreview(page) {
+  return page.sections
+    .map((section) => {
+      const sectionMeta = sectionRegistry[section.type] || { label: "Unknown", description: "No definido" };
+      const blocks = section.blocks.map((block) => renderBlock(block)).join("");
+      return `
+        <section class="preview-section">
+          <header>
+            <p class="eyebrow">${sectionMeta.label}</p>
+            <h4>${section.name}</h4>
+            <p class="muted small">${sectionMeta.description}</p>
+          </header>
+          <div class="preview-blocks">${blocks}</div>
+        </section>
+      `;
+    })
+    .join("");
+}
+
+function renderBlock(block) {
+  const renderer = blockRegistry[block.type];
+  if (!renderer) {
+    return `<article class="unknown-block">Bloque no soportado: ${block.type}</article>`;
+  }
+  return `<article class="preview-block" data-type="${block.type}">${renderer(block.content || {})}</article>`;
+}
+
+function renderLibrary() {
+  els.tabs.library.innerHTML = `
+    <div class="layout-2">
+      <article class="card">
+        <h3>Biblioteca de secciones</h3>
+        <div class="catalog-grid">
+          ${Object.entries(sectionRegistry)
+            .map(
+              ([type, info]) => `
+              <article class="catalog-item">
+                <h4>${info.label}</h4>
+                <p>${info.description}</p>
+                <span class="badge">${type}</span>
+                <span class="badge subtle">${SECTION_CATEGORIES[type]}</span>
+              </article>`
+            )
+            .join("")}
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Biblioteca de bloques</h3>
+        <div class="catalog-grid">
+          ${Object.keys(blockRegistry)
+            .map(
+              (type) => `
+              <article class="catalog-item">
+                <h4>${type}</h4>
+                <p>Bloque reutilizable para múltiples secciones.</p>
+                <span class="badge">${BLOCK_CATEGORIES[type]}</span>
+              </article>`
+            )
+            .join("")}
+        </div>
+      </article>
+    </div>
+  `;
+}
+
+function renderSettings() {
+  const { site, settings } = state.data;
+  els.tabs.settings.innerHTML = `
+    <article class="card">
+      <h3>Settings del sitio</h3>
+      <form id="settingsForm" class="form-grid">
+        <label>Nombre del sitio<input name="siteName" value="${site.name}" /></label>
+        <label>Logo / iniciales<input name="logo" value="${settings.branding.logo}" /></label>
+        <label>Color primario<input name="primaryColor" value="${settings.branding.primaryColor}" /></label>
+        <label>Color acento<input name="accentColor" value="${settings.branding.accentColor}" /></label>
+        <label>Email de contacto<input name="email" value="${settings.contact.email}" /></label>
+        <label>Teléfono<input name="phone" value="${settings.contact.phone}" /></label>
+        <label>LinkedIn<input name="linkedin" value="${settings.social.linkedin}" /></label>
+        <label>X<input name="x" value="${settings.social.x}" /></label>
+        <label>Instagram<input name="instagram" value="${settings.social.instagram}" /></label>
+        <button class="btn primary" type="submit">Guardar settings</button>
+      </form>
+    </article>
+  `;
+
+  document.getElementById("settingsForm").onsubmit = (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    state.data.site.name = String(form.get("siteName") || state.data.site.name);
+    state.data.settings.branding.logo = String(form.get("logo") || "");
+    state.data.settings.branding.primaryColor = String(form.get("primaryColor") || "");
+    state.data.settings.branding.accentColor = String(form.get("accentColor") || "");
+    state.data.settings.contact.email = String(form.get("email") || "");
+    state.data.settings.contact.phone = String(form.get("phone") || "");
+    state.data.settings.social.linkedin = String(form.get("linkedin") || "");
+    state.data.settings.social.x = String(form.get("x") || "");
+    state.data.settings.social.instagram = String(form.get("instagram") || "");
+    render();
+  };
+}
+
+function renderSEO() {
+  const { seo } = state.data;
+  els.tabs.seo.innerHTML = `
+    <article class="card">
+      <h3>SEO básico</h3>
+      <form id="seoForm" class="form-grid">
+        <label>Title<input name="title" value="${seo.title}" /></label>
+        <label>Description<textarea name="description">${seo.description}</textarea></label>
+        <label>Keywords<input name="keywords" value="${seo.keywords}" /></label>
+        <label>OG Image<input name="ogImage" value="${seo.ogImage}" /></label>
+        <label>Robots<input name="robots" value="${seo.robots}" /></label>
+        <label>Canonical<input name="canonical" value="${seo.canonical}" /></label>
+        <button class="btn primary" type="submit">Guardar SEO</button>
+      </form>
+    </article>
+
+    <article class="card">
+      <h3>JSON estructural (preview)</h3>
+      <pre class="json-view">${escapeHtml(JSON.stringify(state.data, null, 2))}</pre>
+    </article>
+  `;
+
+  document.getElementById("seoForm").onsubmit = (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    state.data.seo.title = String(form.get("title") || "");
+    state.data.seo.description = String(form.get("description") || "");
+    state.data.seo.keywords = String(form.get("keywords") || "");
+    state.data.seo.ogImage = String(form.get("ogImage") || "");
+    state.data.seo.robots = String(form.get("robots") || "");
+    state.data.seo.canonical = String(form.get("canonical") || "");
+    render();
+  };
+}
+
+function getPage(id) {
+  return state.data.pages.find((page) => page.id === id);
+}
+
+function slugify(value) {
+  return String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function getToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
