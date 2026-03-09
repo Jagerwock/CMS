@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CMS</title>
+    <title>DealTracker</title>
     <meta
       name="description"
-      content="PulseFreelance centraliza clientes, proyectos, pagos, dashboard financiero, exportación CSV y filtros inteligentes en una sola experiencia UX/UI." />
+      content="DealTracker helps freelancers manage clients, projects, payments, and financial metrics in guest or account mode." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,217 +16,50 @@
     <script src="script.js" defer></script>
   </head>
   <body>
-    <div class="app-shell">
-      <aside class="sidebar">
-        <a class="brand" href="#top">
-          <span class="brand-mark">PF</span>
-          <div>
-            <p class="brand-title">PulseFreelance</p>
-            <p class="brand-subtitle">Control financiero real</p>
-          </div>
-        </a>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-        <nav class="nav-stack" aria-label="Módulos">
-          <button class="nav-btn is-active" data-route="dashboard">Dashboard</button>
-          <button class="nav-btn" data-route="clientes">Clientes</button>
-          <button class="nav-btn" data-route="proyectos">Proyectos</button>
-          <button class="nav-btn" data-route="pagos">Pagos</button>
-          <button class="nav-btn" data-route="exportacion">Exportación</button>
-          <button class="nav-btn" data-route="filtros">Búsqueda y filtros</button>
+    <section id="authView" class="auth-shell hidden"></section>
+
+    <section id="appView" class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">DT</div>
+          <div>
+            <h1>DealTracker</h1>
+            <p>Freelance Revenue OS</p>
+          </div>
+        </div>
+
+        <nav class="menu">
+          <button class="menu-item active" data-tab="dashboard">Dashboard</button>
+          <button class="menu-item" data-tab="clients">Clients</button>
+          <button class="menu-item" data-tab="projects">Projects</button>
+          <button class="menu-item" data-tab="payments">Payments</button>
+          <button class="menu-item" data-tab="exports">Exports</button>
         </nav>
       </aside>
 
-      <main class="workspace" id="top">
-        <header class="workspace-header card">
+      <main class="workspace">
+        <header class="topbar card">
           <div>
-            <p class="eyebrow">Sistema integral para freelancers</p>
-            <h1>Opera clientes, proyectos y pagos sin fricción</h1>
+            <p class="eyebrow">Welcome back</p>
+            <h2>Manage your freelance work in one place</h2>
           </div>
-          <p class="helper-text">Todos los datos se guardan localmente en tu navegador.</p>
+          <div class="topbar-actions">
+            <span id="accountChip" class="account-chip"></span>
+            <button id="authPortalBtn" class="btn primary">Sign in</button>
+            <button id="signOutBtn" class="btn ghost">Sign out</button>
+          </div>
         </header>
 
-        <section class="panel is-visible" id="dashboardPanel">
-          <div class="metric-grid">
-            <article class="card metric">
-              <p>Ingresos del mes</p>
-              <h3 id="metricMonthIncome">$0.00</h3>
-            </article>
-            <article class="card metric">
-              <p>Ingresos del año</p>
-              <h3 id="metricYearIncome">$0.00</h3>
-            </article>
-            <article class="card metric">
-              <p>Pagos pendientes</p>
-              <h3 id="metricPendingPayments">0</h3>
-            </article>
-            <article class="card metric">
-              <p>Proyectos activos</p>
-              <h3 id="metricActiveProjects">0</h3>
-            </article>
-          </div>
+        <div id="guestBanner"></div>
 
-          <div class="dashboard-grid">
-            <article class="card">
-              <div class="card-head">
-                <h2>Ingresos por mes</h2>
-              </div>
-              <div id="incomeChart" class="bar-chart" aria-label="Gráfico de ingresos por mes"></div>
-            </article>
-
-            <article class="card summary">
-              <h2>Resumen financiero</h2>
-              <ul id="financialSummary"></ul>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel" id="clientesPanel">
-          <div class="module-head">
-            <h2>Módulo 1 — Gestión de Clientes</h2>
-            <input type="search" id="clientSearch" placeholder="Buscar por nombre, empresa, email o teléfono" />
-          </div>
-
-          <div class="module-grid">
-            <form id="clientForm" class="card form-card">
-              <h3 id="clientFormTitle">Crear cliente</h3>
-              <input type="hidden" id="clientId" />
-              <label>Nombre<input type="text" id="clientName" required /></label>
-              <label>Empresa<input type="text" id="clientCompany" required /></label>
-              <label>Email<input type="email" id="clientEmail" required /></label>
-              <label>Teléfono<input type="tel" id="clientPhone" required /></label>
-              <div class="actions">
-                <button type="submit" class="btn-primary">Guardar cliente</button>
-                <button type="button" class="btn-ghost" id="resetClientForm">Cancelar</button>
-              </div>
-            </form>
-
-            <article class="card list-card">
-              <h3>Listado de clientes</h3>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Empresa</th>
-                      <th>Email</th>
-                      <th>Teléfono</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="clientsTable"></tbody>
-                </table>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel" id="proyectosPanel">
-          <div class="module-head">
-            <h2>Módulo 2 — Gestión de Proyectos</h2>
-          </div>
-          <div class="module-grid">
-            <form id="projectForm" class="card form-card">
-              <h3 id="projectFormTitle">Crear proyecto</h3>
-              <input type="hidden" id="projectId" />
-              <label>Nombre del proyecto<input type="text" id="projectName" required /></label>
-              <label>Descripción<textarea id="projectDescription" rows="3" required></textarea></label>
-              <label>Cliente asociado<select id="projectClient" required></select></label>
-              <label>Precio total<input type="number" min="0" step="0.01" id="projectTotal" required /></label>
-              <label>Fecha inicio<input type="date" id="projectStart" required /></label>
-              <label>Fecha final<input type="date" id="projectEnd" required /></label>
-              <label>Estado<select id="projectStatus"><option>Activo</option><option>Completado</option></select></label>
-              <div class="actions">
-                <button type="submit" class="btn-primary">Guardar proyecto</button>
-                <button type="button" class="btn-ghost" id="resetProjectForm">Cancelar</button>
-              </div>
-            </form>
-
-            <article class="card list-card">
-              <h3>Proyectos activos y completados</h3>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Proyecto</th>
-                      <th>Cliente</th>
-                      <th>Estado</th>
-                      <th>Precio</th>
-                      <th>Fechas</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="projectsTable"></tbody>
-                </table>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel" id="pagosPanel">
-          <div class="module-head">
-            <h2>Módulo 3 — Gestión de Pagos</h2>
-          </div>
-          <div class="module-grid">
-            <form id="paymentForm" class="card form-card">
-              <h3 id="paymentFormTitle">Registrar pago</h3>
-              <input type="hidden" id="paymentId" />
-              <label>Proyecto<select id="paymentProject" required></select></label>
-              <label>Monto<input type="number" min="0" step="0.01" id="paymentAmount" required /></label>
-              <label>Fecha de vencimiento<input type="date" id="paymentDueDate" required /></label>
-              <label>Estado<select id="paymentStatus"><option>Pendiente</option><option>Pagado</option></select></label>
-              <div class="actions">
-                <button type="submit" class="btn-primary">Guardar pago</button>
-                <button type="button" class="btn-ghost" id="resetPaymentForm">Cancelar</button>
-              </div>
-            </form>
-
-            <article class="card list-card">
-              <h3>Pagos pendientes, pagados y retrasados</h3>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Proyecto</th>
-                      <th>Monto</th>
-                      <th>Vence</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="paymentsTable"></tbody>
-                </table>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel" id="exportacionPanel">
-          <article class="card export-card">
-            <h2>Módulo 5 — Exportación de Datos</h2>
-            <p>Exporta tu operación financiera en CSV para respaldo, reportes o contabilidad.</p>
-            <div class="actions">
-              <button class="btn-primary" data-export="clients">Exportar clientes CSV</button>
-              <button class="btn-primary" data-export="projects">Exportar proyectos CSV</button>
-              <button class="btn-primary" data-export="payments">Exportar pagos CSV</button>
-            </div>
-          </article>
-        </section>
-
-        <section class="panel" id="filtrosPanel">
-          <article class="card filter-card">
-            <h2>Módulo 6 — Búsqueda y Filtros</h2>
-            <div class="filter-grid">
-              <label>Cliente<select id="globalFilterClient"><option value="">Todos</option></select></label>
-              <label>Estado del proyecto<select id="globalFilterProjectStatus"><option value="">Todos</option><option value="Activo">Activo</option><option value="Completado">Completado</option></select></label>
-              <label>Estado del pago<select id="globalFilterPaymentStatus"><option value="">Todos</option><option value="Pendiente">Pendiente</option><option value="Pagado">Pagado</option><option value="Retrasado">Retrasado</option></select></label>
-              <label>Desde<input type="date" id="globalFilterFrom" /></label>
-              <label>Hasta<input type="date" id="globalFilterTo" /></label>
-              <button id="clearFilters" class="btn-ghost" type="button">Limpiar filtros</button>
-            </div>
-            <p class="helper-text">Los filtros impactan automáticamente las tablas de proyectos y pagos.</p>
-          </article>
-        </section>
+        <section class="tab-panel" id="dashboardTab"></section>
+        <section class="tab-panel hidden" id="clientsTab"></section>
+        <section class="tab-panel hidden" id="projectsTab"></section>
+        <section class="tab-panel hidden" id="paymentsTab"></section>
+        <section class="tab-panel hidden" id="exportsTab"></section>
       </main>
-    </div>
+    </section>
   </body>
 </html>

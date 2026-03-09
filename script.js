@@ -1,599 +1,464 @@
-const STORAGE_KEY = "pulsefreelance-data-v1";
+const APP_KEY = "dealtracker::session";
+const USERS_KEY = "dealtracker::users";
+const USER_DATA_KEY = (email) => `dealtracker::data::${email}`;
+
+const initialDemo = {
+  clients: [
+    { id: crypto.randomUUID(), name: "Aurora Studio", company: "Aurora Studio", email: "hello@aurorastudio.io", phone: "+51 981 112 932", notes: "Monthly retainer client" },
+    { id: crypto.randomUUID(), name: "Mateo Rivas", company: "Freelance Founder", email: "mateo@rivas.pe", phone: "+51 965 778 441", notes: "Needs fast iterations" }
+  ],
+  projects: [
+    { id: crypto.randomUUID(), name: "Landing Page Redesign", clientId: "", total: 1200, startDate: "2026-02-02", dueDate: "2026-03-10", description: "Conversion-focused redesign", status: "In Progress" }
+  ],
+  payments: []
+};
+initialDemo.projects[0].clientId = initialDemo.clients[0].id;
 
 const state = {
-  clients: [],
-  projects: [],
-  payments: [],
-  filters: {
-    clientId: "",
-    projectStatus: "",
-    paymentStatus: "",
-    from: "",
-    to: ""
-  }
+  mode: "guest",
+  user: { name: "Guest Freelancer", email: null },
+  data: structuredClone(initialDemo),
+  pendingGuestData: null,
+  tab: "dashboard"
 };
 
 const els = {
-  navButtons: document.querySelectorAll(".nav-btn"),
-  panels: {
-    dashboard: document.getElementById("dashboardPanel"),
-    clientes: document.getElementById("clientesPanel"),
-    proyectos: document.getElementById("proyectosPanel"),
-    pagos: document.getElementById("pagosPanel"),
-    exportacion: document.getElementById("exportacionPanel"),
-    filtros: document.getElementById("filtrosPanel")
-  },
-  metricMonthIncome: document.getElementById("metricMonthIncome"),
-  metricYearIncome: document.getElementById("metricYearIncome"),
-  metricPendingPayments: document.getElementById("metricPendingPayments"),
-  metricActiveProjects: document.getElementById("metricActiveProjects"),
-  financialSummary: document.getElementById("financialSummary"),
-  incomeChart: document.getElementById("incomeChart"),
-  clientSearch: document.getElementById("clientSearch"),
-  clientsTable: document.getElementById("clientsTable"),
-  projectsTable: document.getElementById("projectsTable"),
-  paymentsTable: document.getElementById("paymentsTable"),
-  clientForm: document.getElementById("clientForm"),
-  projectForm: document.getElementById("projectForm"),
-  paymentForm: document.getElementById("paymentForm"),
-  clientFormTitle: document.getElementById("clientFormTitle"),
-  projectFormTitle: document.getElementById("projectFormTitle"),
-  paymentFormTitle: document.getElementById("paymentFormTitle"),
-  resetClientForm: document.getElementById("resetClientForm"),
-  resetProjectForm: document.getElementById("resetProjectForm"),
-  resetPaymentForm: document.getElementById("resetPaymentForm"),
-  projectClientSelect: document.getElementById("projectClient"),
-  paymentProjectSelect: document.getElementById("paymentProject"),
-  globalFilterClient: document.getElementById("globalFilterClient"),
-  globalFilterProjectStatus: document.getElementById("globalFilterProjectStatus"),
-  globalFilterPaymentStatus: document.getElementById("globalFilterPaymentStatus"),
-  globalFilterFrom: document.getElementById("globalFilterFrom"),
-  globalFilterTo: document.getElementById("globalFilterTo"),
-  clearFilters: document.getElementById("clearFilters"),
-  exportButtons: document.querySelectorAll("[data-export]")
+  authView: document.getElementById("authView"),
+  appView: document.getElementById("appView"),
+  toast: document.getElementById("toast"),
+  guestBanner: document.getElementById("guestBanner"),
+  accountChip: document.getElementById("accountChip"),
+  authPortalBtn: document.getElementById("authPortalBtn"),
+  signOutBtn: document.getElementById("signOutBtn")
 };
 
-function uid(prefix) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+init();
+
+function init() {
+  restoreSession();
+  wireGlobalEvents();
+  render();
 }
 
-function formatCurrency(value) {
-  return Number(value || 0).toLocaleString("es-ES", { style: "currency", currency: "USD" });
-}
+function restoreSession() {
+  const session = JSON.parse(localStorage.getItem(APP_KEY) || "null");
+  if (!session) {
+    persistSession();
+    return;
+  }
+  state.mode = session.mode || "guest";
+  state.user = session.user || { name: "Guest Freelancer", email: null };
 
-function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    seedInitialData();
+  if (state.mode === "account" && state.user?.email) {
+    state.data = JSON.parse(localStorage.getItem(USER_DATA_KEY(state.user.email)) || "null") || structuredClone(initialDemo);
     return;
   }
 
-  const parsed = JSON.parse(raw);
-  state.clients = parsed.clients || [];
-  state.projects = parsed.projects || [];
-  state.payments = parsed.payments || [];
+  state.mode = "guest";
+  state.user = { name: "Guest Freelancer", email: null };
+  state.data = structuredClone(initialDemo);
+  persistSession();
 }
 
-function saveState() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({ clients: state.clients, projects: state.projects, payments: state.payments })
-  );
+function persistSession() {
+  localStorage.setItem(APP_KEY, JSON.stringify({ mode: state.mode, user: state.user }));
+  if (state.mode === "account" && state.user?.email) {
+    localStorage.setItem(USER_DATA_KEY(state.user.email), JSON.stringify(state.data));
+  }
 }
 
-function seedInitialData() {
-  const clientA = { id: uid("cli"), nombre: "María Torres", empresa: "Studio Nova", email: "maria@studionova.com", telefono: "+34 611 223 998" };
-  const clientB = { id: uid("cli"), nombre: "Carlos Peña", empresa: "Peña Digital", email: "carlos@penadigital.com", telefono: "+34 677 901 332" };
-  state.clients = [clientA, clientB];
-
-  const projectA = {
-    id: uid("pro"),
-    nombre: "Portal SaaS UX",
-    descripcion: "Rediseño de flujo de onboarding",
-    clientId: clientA.id,
-    precioTotal: 5400,
-    fechaInicio: "2026-01-05",
-    fechaFinal: "2026-03-20",
-    estado: "Activo"
-  };
-  const projectB = {
-    id: uid("pro"),
-    nombre: "Landing Fintech",
-    descripcion: "Construcción web y sistema de lead capture",
-    clientId: clientB.id,
-    precioTotal: 3200,
-    fechaInicio: "2026-02-01",
-    fechaFinal: "2026-02-28",
-    estado: "Completado"
-  };
-  state.projects = [projectA, projectB];
-
-  state.payments = [
-    { id: uid("pay"), projectId: projectA.id, amount: 2400, dueDate: "2026-03-04", status: "Pendiente", paidDate: "" },
-    { id: uid("pay"), projectId: projectB.id, amount: 3200, dueDate: "2026-02-28", status: "Pagado", paidDate: "2026-02-27" }
-  ];
-
-  saveState();
-}
-
-function switchPanel(route) {
-  Object.entries(els.panels).forEach(([key, panel]) => {
-    panel.classList.toggle("is-visible", key === route);
+function wireGlobalEvents() {
+  els.authPortalBtn.addEventListener("click", () => {
+    if (state.mode === "account") return;
+    state.pendingGuestData = structuredClone(state.data);
+    state.mode = null;
+    render();
   });
-  els.navButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.route === route));
-}
 
-function getClientById(id) {
-  return state.clients.find((item) => item.id === id);
-}
+  els.signOutBtn.addEventListener("click", () => {
+    if (state.mode === "guest" && !confirm("You are in guest mode. If you leave now, your data will be lost. Continue?")) return;
+    localStorage.removeItem(APP_KEY);
+    state.mode = "guest";
+    state.user = { name: "Guest Freelancer", email: null };
+    state.data = structuredClone(initialDemo);
+    state.pendingGuestData = null;
+    persistSession();
+    render();
+  });
 
-function getProjectById(id) {
-  return state.projects.find((item) => item.id === id);
-}
-
-function inferPaymentStatus(payment) {
-  if (payment.status === "Pagado") {
-    return "Pagado";
-  }
-  const today = new Date().toISOString().slice(0, 10);
-  if (payment.dueDate < today) {
-    return "Retrasado";
-  }
-  return "Pendiente";
-}
-
-function matchesDateRange(dateValue, from, to) {
-  if (!dateValue) {
-    return false;
-  }
-  if (from && dateValue < from) {
-    return false;
-  }
-  if (to && dateValue > to) {
-    return false;
-  }
-  return true;
-}
-
-function getFilteredProjects() {
-  return state.projects.filter((project) => {
-    const { clientId, projectStatus, from, to } = state.filters;
-    const byClient = !clientId || project.clientId === clientId;
-    const byStatus = !projectStatus || project.estado === projectStatus;
-    const byDate = (!from && !to) || matchesDateRange(project.fechaInicio, from, to);
-    return byClient && byStatus && byDate;
+  window.addEventListener("beforeunload", (event) => {
+    if (state.mode === "guest") {
+      event.preventDefault();
+      event.returnValue = "Your guest data won’t be saved.";
+    }
   });
 }
 
-function getFilteredPayments() {
-  return state.payments.filter((payment) => {
-    const project = getProjectById(payment.projectId);
-    const computedStatus = inferPaymentStatus(payment);
-    const { clientId, paymentStatus, from, to } = state.filters;
-    const byClient = !clientId || (project && project.clientId === clientId);
-    const byStatus = !paymentStatus || computedStatus === paymentStatus;
-    const byDate = (!from && !to) || matchesDateRange(payment.dueDate, from, to);
-    return byClient && byStatus && byDate;
+function render() {
+  if (!state.mode) {
+    renderAuth();
+    return;
+  }
+
+  els.authView.classList.add("hidden");
+  els.appView.classList.remove("hidden");
+
+  els.accountChip.textContent = state.mode === "guest" ? "Guest Mode" : state.user.name;
+  els.authPortalBtn.classList.toggle("hidden", state.mode === "account");
+  els.signOutBtn.textContent = state.mode === "guest" ? "Exit guest" : "Sign out";
+
+  renderGuestBanner();
+  renderMenu();
+  renderDashboard();
+  renderClients();
+  renderProjects();
+  renderPayments();
+  renderExports();
+}
+
+function renderAuth() {
+  els.authView.classList.remove("hidden");
+  els.appView.classList.add("hidden");
+  els.authView.innerHTML = `
+    <div class="auth-card">
+      <aside class="auth-info">
+        <p class="eyebrow">DealTracker</p>
+        <h2>Keep your freelance progress safe</h2>
+        <p>Create an account or sign in to save your clients, projects, and payments.</p>
+        <ul>
+          <li>Your guest version is already active by default.</li>
+          <li>Login unlocks persistent data across sessions.</li>
+          <li>You can still go back to guest mode instantly.</li>
+        </ul>
+      </aside>
+      <div class="auth-form-wrap">
+        <div class="auth-toggle">
+          <button class="btn ghost" data-auth="signin">Sign in</button>
+          <button class="btn ghost" data-auth="signup">Create account</button>
+          <button class="btn primary" id="backToGuest">Back to guest app</button>
+        </div>
+        <form id="accountForm" class="card">
+          <h3 id="authTitle">Sign in to your account</h3>
+          <label>Full name<input name="name" placeholder="e.g. Valeria Torres" /></label>
+          <label>Email<input name="email" type="email" required /></label>
+          <label>Password<input name="password" type="password" minlength="6" required /></label>
+          <p class="muted" id="authHint">Use your account credentials to access saved data.</p>
+          <div class="actions"><button class="btn primary" type="submit">Continue</button></div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  let authMode = "signin";
+  const form = document.getElementById("accountForm");
+  const title = document.getElementById("authTitle");
+  const hint = document.getElementById("authHint");
+  const nameInput = form.elements.name;
+  nameInput.closest("label").classList.add("hidden");
+
+  els.authView.querySelectorAll("[data-auth]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      authMode = btn.dataset.auth;
+      const signUp = authMode === "signup";
+      title.textContent = signUp ? "Create your DealTracker account" : "Sign in to your account";
+      hint.textContent = signUp
+        ? "Create an account to save your clients, projects, and payments."
+        : "Use your account credentials to access saved data.";
+      nameInput.closest("label").classList.toggle("hidden", !signUp);
+    });
   });
-}
 
-function renderClientOptions() {
-  const options = state.clients
-    .map((client) => `<option value="${client.id}">${client.nombre} · ${client.empresa}</option>`)
-    .join("");
+  document.getElementById("backToGuest").addEventListener("click", () => {
+    state.mode = "guest";
+    state.user = { name: "Guest Freelancer", email: null };
+    state.data = state.pendingGuestData ? structuredClone(state.pendingGuestData) : structuredClone(initialDemo);
+    state.pendingGuestData = null;
+    persistSession();
+    render();
+  });
 
-  els.projectClientSelect.innerHTML = `<option value="">Selecciona cliente</option>${options}`;
-  els.globalFilterClient.innerHTML = `<option value="">Todos</option>${options}`;
-  els.globalFilterClient.value = state.filters.clientId;
-}
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(form));
+    if (!payload.email || !payload.password || (authMode === "signup" && !payload.name)) {
+      notify("Please complete all required fields.");
+      return;
+    }
 
-function renderProjectOptions() {
-  const options = state.projects
-    .map((project) => `<option value="${project.id}">${project.nombre}</option>`)
-    .join("");
-  els.paymentProjectSelect.innerHTML = `<option value="">Selecciona proyecto</option>${options}`;
-}
+    const users = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
 
-function renderClientsTable() {
-  const term = (els.clientSearch.value || "").toLowerCase().trim();
-  const rows = state.clients
-    .filter((client) => {
-      if (!term) {
-        return true;
+    if (authMode === "signup") {
+      if (users.some((u) => u.email === payload.email)) {
+        notify("An account with this email already exists.");
+        return;
       }
-      return [client.nombre, client.empresa, client.email, client.telefono]
-        .join(" ")
-        .toLowerCase()
-        .includes(term);
-    })
-    .map(
-      (client) => `
-      <tr>
-        <td>${client.nombre}</td>
-        <td>${client.empresa}</td>
-        <td>${client.email}</td>
-        <td>${client.telefono}</td>
-        <td>
-          <button class="btn-ghost" data-action="edit-client" data-id="${client.id}">Editar</button>
-          <button class="btn-ghost" data-action="delete-client" data-id="${client.id}">Eliminar</button>
-        </td>
-      </tr>
-    `
-    )
-    .join("");
 
-  els.clientsTable.innerHTML = rows || `<tr><td colspan="5">No hay clientes para mostrar.</td></tr>`;
+      users.push({ name: payload.name, email: payload.email, password: payload.password });
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+      const seedData = state.pendingGuestData || structuredClone(initialDemo);
+      localStorage.setItem(USER_DATA_KEY(payload.email), JSON.stringify(seedData));
+
+      state.user = { name: payload.name, email: payload.email };
+      state.mode = "account";
+      state.data = seedData;
+      state.pendingGuestData = null;
+      persistSession();
+      notify("Account created. Your workspace is ready.");
+      render();
+      return;
+    }
+
+    const account = users.find((u) => u.email === payload.email && u.password === payload.password);
+    if (!account) {
+      notify("Invalid email or password.");
+      return;
+    }
+
+    state.mode = "account";
+    state.user = { name: account.name, email: account.email };
+    state.data = JSON.parse(localStorage.getItem(USER_DATA_KEY(account.email)) || "null") || structuredClone(initialDemo);
+    state.pendingGuestData = null;
+    persistSession();
+    render();
+  });
 }
 
-function renderProjectsTable() {
-  const rows = getFilteredProjects()
-    .map((project) => {
-      const client = getClientById(project.clientId);
-      return `
-      <tr>
-        <td>${project.nombre}<br /><small>${project.descripcion}</small></td>
-        <td>${client ? client.nombre : "Cliente eliminado"}</td>
-        <td><span class="badge ${project.estado === "Activo" ? "pendiente" : "pagado"}">${project.estado}</span></td>
-        <td>${formatCurrency(project.precioTotal)}</td>
-        <td>${project.fechaInicio} → ${project.fechaFinal}</td>
-        <td>
-          <button class="btn-ghost" data-action="edit-project" data-id="${project.id}">Editar</button>
-          <button class="btn-ghost" data-action="delete-project" data-id="${project.id}">Eliminar</button>
-        </td>
-      </tr>
-      `;
-    })
-    .join("");
-
-  els.projectsTable.innerHTML = rows || `<tr><td colspan="6">No hay proyectos con los filtros actuales.</td></tr>`;
+function renderMenu() {
+  document.querySelectorAll(".menu-item").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === state.tab);
+    btn.onclick = () => {
+      state.tab = btn.dataset.tab;
+      document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.add("hidden"));
+      document.getElementById(`${state.tab}Tab`).classList.remove("hidden");
+      render();
+    };
+  });
+  document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.add("hidden"));
+  document.getElementById(`${state.tab}Tab`).classList.remove("hidden");
 }
 
-function renderPaymentsTable() {
-  const rows = getFilteredPayments()
-    .map((payment) => {
-      const project = getProjectById(payment.projectId);
-      const computedStatus = inferPaymentStatus(payment);
-      return `
-      <tr>
-        <td>${project ? project.nombre : "Proyecto eliminado"}</td>
-        <td>${formatCurrency(payment.amount)}</td>
-        <td>${payment.dueDate}</td>
-        <td><span class="badge ${computedStatus.toLowerCase()}">${computedStatus}</span></td>
-        <td>
-          <button class="btn-ghost" data-action="edit-payment" data-id="${payment.id}">Editar</button>
-          <button class="btn-ghost" data-action="toggle-paid" data-id="${payment.id}">${payment.status === "Pagado" ? "Marcar pendiente" : "Marcar pagado"}</button>
-          <button class="btn-ghost" data-action="delete-payment" data-id="${payment.id}">Eliminar</button>
-        </td>
-      </tr>
-      `;
-    })
-    .join("");
+function renderGuestBanner() {
+  if (state.mode !== "guest") {
+    els.guestBanner.innerHTML = "";
+    return;
+  }
 
-  els.paymentsTable.innerHTML = rows || `<tr><td colspan="5">No hay pagos para mostrar.</td></tr>`;
+  els.guestBanner.innerHTML = `
+    <div class="banner">
+      <div>
+        <strong>You’re currently using DealTracker in guest mode.</strong>
+        <p class="muted">Your data won’t be saved unless you create an account. Create an account to save your clients, projects, and payments.</p>
+      </div>
+      <button id="saveWorkBtn" class="btn primary">Save your work</button>
+    </div>`;
+
+  document.getElementById("saveWorkBtn").onclick = () => {
+    state.pendingGuestData = structuredClone(state.data);
+    state.mode = null;
+    render();
+  };
 }
 
 function renderDashboard() {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const paidPayments = state.payments.filter((payment) => inferPaymentStatus(payment) === "Pagado");
-
-  const monthIncome = paidPayments
-    .filter((payment) => {
-      const date = new Date(payment.paidDate || payment.dueDate);
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    })
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
-
-  const yearIncome = paidPayments
-    .filter((payment) => new Date(payment.paidDate || payment.dueDate).getFullYear() === currentYear)
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
-
-  const pendingCount = state.payments.filter((payment) => inferPaymentStatus(payment) !== "Pagado").length;
-  const activeProjects = state.projects.filter((project) => project.estado === "Activo").length;
-
-  els.metricMonthIncome.textContent = formatCurrency(monthIncome);
-  els.metricYearIncome.textContent = formatCurrency(yearIncome);
-  els.metricPendingPayments.textContent = String(pendingCount);
-  els.metricActiveProjects.textContent = String(activeProjects);
-
-  const monthlyTotals = Array.from({ length: 12 }, (_, monthIndex) => {
-    return paidPayments
-      .filter((payment) => {
-        const date = new Date(payment.paidDate || payment.dueDate);
-        return date.getFullYear() === currentYear && date.getMonth() === monthIndex;
-      })
-      .reduce((sum, payment) => sum + Number(payment.amount), 0);
-  });
-
-  const max = Math.max(...monthlyTotals, 1);
-  els.incomeChart.innerHTML = monthlyTotals
-    .map((value, idx) => {
-      const ratio = Math.max((value / max) * 100, 2);
-      const label = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"][idx];
-      return `<div class="bar-item" style="height:${ratio}%"><span>${label}</span></div>`;
-    })
-    .join("");
-
-  const completedProjects = state.projects.filter((project) => project.estado === "Completado").length;
-  els.financialSummary.innerHTML = `
-    <li>Total clientes registrados: <strong>${state.clients.length}</strong></li>
-    <li>Proyectos activos: <strong>${activeProjects}</strong> · completados: <strong>${completedProjects}</strong></li>
-    <li>Pagos pendientes + retrasados: <strong>${pendingCount}</strong></li>
-    <li>Flujo cobrado anual: <strong>${formatCurrency(yearIncome)}</strong></li>
+  const monthIncome = getPaidThisMonth();
+  const pending = getPendingAmount();
+  const activeProjects = state.data.projects.filter((p) => paymentStatus(p.id) !== "Paid").length;
+  const container = document.getElementById("dashboardTab");
+  container.innerHTML = `
+    <div class="grid-4">
+      <article class="card metric"><p class="muted">Income this month</p><h3>${money(monthIncome)}</h3></article>
+      <article class="card metric"><p class="muted">Pending amount</p><h3>${money(pending)}</h3></article>
+      <article class="card metric"><p class="muted">Active projects</p><h3>${activeProjects}</h3></article>
+      <article class="card metric"><p class="muted">Active clients</p><h3>${state.data.clients.length}</h3></article>
+    </div>
+    <div class="card">
+      <h3>Recent projects</h3>
+      ${state.data.projects.length ? `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Paid / Total</th></tr></thead><tbody>
+      ${state.data.projects.slice(-5).reverse().map((p) => `<tr><td>${p.name}</td><td>${clientName(p.clientId)}</td><td><span class="badge ${badgeClass(paymentStatus(p.id))}">${paymentStatus(p.id)}</span></td><td>${money(totalPaidByProject(p.id))} / ${money(Number(p.total))}</td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="muted">No projects yet. Create your first project to track income.</p>`}
+    </div>
   `;
 }
 
-function renderAll() {
-  renderClientOptions();
-  renderProjectOptions();
-  renderClientsTable();
-  renderProjectsTable();
-  renderPaymentsTable();
-  renderDashboard();
-  saveState();
-}
+function renderClients() {
+  const container = document.getElementById("clientsTab");
+  container.innerHTML = `
+    <div class="layout-2">
+      <form id="clientForm" class="card">
+        <h3>Add client</h3>
+        <label>Name<input name="name" required /></label>
+        <label>Company<input name="company" required /></label>
+        <label>Email<input name="email" type="email" required /></label>
+        <label>Phone<input name="phone" required /></label>
+        <label>Notes<textarea name="notes"></textarea></label>
+        <button class="btn primary" type="submit">Save client</button>
+      </form>
+      <article class="card">
+        <h3>Clients</h3>
+        ${state.data.clients.length ? `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th></tr></thead><tbody>${state.data.clients.map((c) => `<tr><td>${c.name}</td><td>${c.company}</td><td>${c.email}</td><td>${c.phone}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No clients yet. Create your first client to get started.</p>`}
+      </article>
+    </div>`;
 
-function resetClientForm() {
-  els.clientForm.reset();
-  document.getElementById("clientId").value = "";
-  els.clientFormTitle.textContent = "Crear cliente";
-}
-
-function resetProjectForm() {
-  els.projectForm.reset();
-  document.getElementById("projectId").value = "";
-  els.projectFormTitle.textContent = "Crear proyecto";
-}
-
-function resetPaymentForm() {
-  els.paymentForm.reset();
-  document.getElementById("paymentId").value = "";
-  els.paymentFormTitle.textContent = "Registrar pago";
-}
-
-function handleClientSubmit(event) {
-  event.preventDefault();
-  const id = document.getElementById("clientId").value;
-  const payload = {
-    id: id || uid("cli"),
-    nombre: document.getElementById("clientName").value.trim(),
-    empresa: document.getElementById("clientCompany").value.trim(),
-    email: document.getElementById("clientEmail").value.trim(),
-    telefono: document.getElementById("clientPhone").value.trim()
+  document.getElementById("clientForm").onsubmit = (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(e.target));
+    state.data.clients.push({ ...payload, id: crypto.randomUUID() });
+    afterMutation("Client saved.");
   };
-
-  if (id) {
-    state.clients = state.clients.map((client) => (client.id === id ? payload : client));
-  } else {
-    state.clients.push(payload);
-  }
-
-  resetClientForm();
-  renderAll();
 }
 
-function handleProjectSubmit(event) {
-  event.preventDefault();
-  const id = document.getElementById("projectId").value;
-  const payload = {
-    id: id || uid("pro"),
-    nombre: document.getElementById("projectName").value.trim(),
-    descripcion: document.getElementById("projectDescription").value.trim(),
-    clientId: document.getElementById("projectClient").value,
-    precioTotal: Number(document.getElementById("projectTotal").value),
-    fechaInicio: document.getElementById("projectStart").value,
-    fechaFinal: document.getElementById("projectEnd").value,
-    estado: document.getElementById("projectStatus").value
+function renderProjects() {
+  const container = document.getElementById("projectsTab");
+  const clientOptions = state.data.clients.map((c) => `<option value="${c.id}">${c.name} · ${c.company}</option>`).join("");
+
+  container.innerHTML = `
+    <div class="layout-2">
+      <form id="projectForm" class="card">
+        <h3>Create project</h3>
+        <label>Project name<input name="name" required /></label>
+        <label>Associated client<select name="clientId" required><option value="">Select a client</option>${clientOptions}</select></label>
+        <label>Total price<input type="number" min="0" step="0.01" name="total" required /></label>
+        <label>Start date<input type="date" name="startDate" required /></label>
+        <label>Delivery date<input type="date" name="dueDate" required /></label>
+        <label>Description<textarea name="description" required></textarea></label>
+        <label>Status<select name="status"><option>In Progress</option><option>On Hold</option><option>Completed</option></select></label>
+        <button class="btn primary" type="submit">Save project</button>
+      </form>
+      <article class="card">
+        <h3>Projects</h3>
+        ${state.data.projects.length ? `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Total</th><th>Paid</th><th>Pending</th></tr></thead><tbody>${state.data.projects.map((p) => `<tr><td>${p.name}</td><td>${clientName(p.clientId)}</td><td>${p.status}</td><td>${money(Number(p.total))}</td><td>${money(totalPaidByProject(p.id))}</td><td>${money(Math.max(Number(p.total) - totalPaidByProject(p.id), 0))}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No projects yet. Link projects to clients to track delivery and revenue.</p>`}
+      </article>
+    </div>`;
+
+  document.getElementById("projectForm").onsubmit = (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(e.target));
+    if (!payload.clientId) {
+      notify("Please select a client before creating a project.");
+      return;
+    }
+    state.data.projects.push({ ...payload, id: crypto.randomUUID(), total: Number(payload.total) });
+    afterMutation("Project created successfully.");
   };
-
-  if (payload.fechaFinal < payload.fechaInicio) {
-    alert("La fecha final del proyecto no puede ser anterior a la fecha de inicio.");
-    return;
-  }
-
-  if (id) {
-    state.projects = state.projects.map((project) => (project.id === id ? payload : project));
-  } else {
-    state.projects.push(payload);
-  }
-
-  resetProjectForm();
-  renderAll();
 }
 
-function handlePaymentSubmit(event) {
-  event.preventDefault();
-  const id = document.getElementById("paymentId").value;
-  const status = document.getElementById("paymentStatus").value;
-  const payload = {
-    id: id || uid("pay"),
-    projectId: document.getElementById("paymentProject").value,
-    amount: Number(document.getElementById("paymentAmount").value),
-    dueDate: document.getElementById("paymentDueDate").value,
-    status,
-    paidDate: status === "Pagado" ? new Date().toISOString().slice(0, 10) : ""
+function renderPayments() {
+  const container = document.getElementById("paymentsTab");
+  const projects = state.data.projects.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+  container.innerHTML = `
+    <div class="layout-2">
+      <form id="paymentForm" class="card">
+        <h3>Record payment</h3>
+        <label>Project<select name="projectId" required><option value="">Select project</option>${projects}</select></label>
+        <label>Amount<input name="amount" type="number" min="0" step="0.01" required /></label>
+        <label>Date<input name="date" type="date" required /></label>
+        <label>Payment method<select name="method"><option>Bank Transfer</option><option>PayPal</option><option>Yape</option><option>Stripe</option></select></label>
+        <label>Reference<input name="reference" placeholder="TRX-2026-005" /></label>
+        <label>Notes<textarea name="notes"></textarea></label>
+        <button class="btn primary" type="submit">Save payment</button>
+      </form>
+      <article class="card">
+        <h3>Payments history</h3>
+        ${state.data.payments.length ? `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Amount</th><th>Date</th><th>Method</th><th>Status</th></tr></thead><tbody>${state.data.payments.slice().reverse().map((p) => `<tr><td>${projectName(p.projectId)}</td><td>${money(Number(p.amount))}</td><td>${p.date}</td><td>${p.method}</td><td><span class="badge ${badgeClass(paymentStatus(p.projectId))}">${paymentStatus(p.projectId)}</span></td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No payments yet. Record the first payment to track cash flow.</p>`}
+      </article>
+    </div>`;
+
+  document.getElementById("paymentForm").onsubmit = (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(e.target));
+    state.data.payments.push({ ...payload, id: crypto.randomUUID(), amount: Number(payload.amount) });
+    afterMutation("Payment recorded successfully.");
   };
-
-  if (id) {
-    state.payments = state.payments.map((payment) => (payment.id === id ? payload : payment));
-  } else {
-    state.payments.push(payload);
-  }
-
-  resetPaymentForm();
-  renderAll();
 }
 
-function handleTableActions(event) {
-  const target = event.target.closest("button[data-action]");
-  if (!target) {
-    return;
-  }
+function renderExports() {
+  const container = document.getElementById("exportsTab");
+  container.innerHTML = `
+    <article class="card">
+      <h3>Export reports</h3>
+      <p class="muted">Download your records as CSV files for accounting, reports, or backups.</p>
+      <div class="actions">
+        <button class="btn ghost" data-export="clients">Export clients</button>
+        <button class="btn ghost" data-export="projects">Export projects</button>
+        <button class="btn ghost" data-export="payments">Export payments</button>
+      </div>
+    </article>`;
 
-  const { action, id } = target.dataset;
-
-  if (action === "edit-client") {
-    const client = getClientById(id);
-    if (!client) return;
-    document.getElementById("clientId").value = client.id;
-    document.getElementById("clientName").value = client.nombre;
-    document.getElementById("clientCompany").value = client.empresa;
-    document.getElementById("clientEmail").value = client.email;
-    document.getElementById("clientPhone").value = client.telefono;
-    els.clientFormTitle.textContent = "Editar cliente";
-    switchPanel("clientes");
-  }
-
-  if (action === "delete-client") {
-    state.clients = state.clients.filter((item) => item.id !== id);
-    state.projects = state.projects.filter((project) => project.clientId !== id);
-    const projectIds = new Set(state.projects.map((project) => project.id));
-    state.payments = state.payments.filter((payment) => projectIds.has(payment.projectId));
-    renderAll();
-  }
-
-  if (action === "edit-project") {
-    const project = getProjectById(id);
-    if (!project) return;
-    document.getElementById("projectId").value = project.id;
-    document.getElementById("projectName").value = project.nombre;
-    document.getElementById("projectDescription").value = project.descripcion;
-    document.getElementById("projectClient").value = project.clientId;
-    document.getElementById("projectTotal").value = project.precioTotal;
-    document.getElementById("projectStart").value = project.fechaInicio;
-    document.getElementById("projectEnd").value = project.fechaFinal;
-    document.getElementById("projectStatus").value = project.estado;
-    els.projectFormTitle.textContent = "Editar proyecto";
-    switchPanel("proyectos");
-  }
-
-  if (action === "delete-project") {
-    state.projects = state.projects.filter((item) => item.id !== id);
-    state.payments = state.payments.filter((payment) => payment.projectId !== id);
-    renderAll();
-  }
-
-  if (action === "edit-payment") {
-    const payment = state.payments.find((item) => item.id === id);
-    if (!payment) return;
-    document.getElementById("paymentId").value = payment.id;
-    document.getElementById("paymentProject").value = payment.projectId;
-    document.getElementById("paymentAmount").value = payment.amount;
-    document.getElementById("paymentDueDate").value = payment.dueDate;
-    document.getElementById("paymentStatus").value = payment.status;
-    els.paymentFormTitle.textContent = "Editar pago";
-    switchPanel("pagos");
-  }
-
-  if (action === "toggle-paid") {
-    state.payments = state.payments.map((payment) => {
-      if (payment.id !== id) {
-        return payment;
-      }
-      const paid = payment.status === "Pagado";
-      return {
-        ...payment,
-        status: paid ? "Pendiente" : "Pagado",
-        paidDate: paid ? "" : new Date().toISOString().slice(0, 10)
-      };
-    });
-    renderAll();
-  }
-
-  if (action === "delete-payment") {
-    state.payments = state.payments.filter((item) => item.id !== id);
-    renderAll();
-  }
-}
-
-function setupFilters() {
-  const syncFilters = () => {
-    state.filters.clientId = els.globalFilterClient.value;
-    state.filters.projectStatus = els.globalFilterProjectStatus.value;
-    state.filters.paymentStatus = els.globalFilterPaymentStatus.value;
-    state.filters.from = els.globalFilterFrom.value;
-    state.filters.to = els.globalFilterTo.value;
-    renderProjectsTable();
-    renderPaymentsTable();
-  };
-
-  [
-    els.globalFilterClient,
-    els.globalFilterProjectStatus,
-    els.globalFilterPaymentStatus,
-    els.globalFilterFrom,
-    els.globalFilterTo
-  ].forEach((input) => input.addEventListener("change", syncFilters));
-
-  els.clearFilters.addEventListener("click", () => {
-    state.filters = { clientId: "", projectStatus: "", paymentStatus: "", from: "", to: "" };
-    els.globalFilterClient.value = "";
-    els.globalFilterProjectStatus.value = "";
-    els.globalFilterPaymentStatus.value = "";
-    els.globalFilterFrom.value = "";
-    els.globalFilterTo.value = "";
-    renderProjectsTable();
-    renderPaymentsTable();
+  container.querySelectorAll("[data-export]").forEach((btn) => {
+    btn.onclick = () => {
+      const key = btn.dataset.export;
+      exportCsv(key, state.data[key]);
+      notify(`${key[0].toUpperCase() + key.slice(1)} exported.`);
+    };
   });
 }
 
-function exportCsv(type) {
-  const headersByType = {
-    clients: ["nombre", "empresa", "email", "telefono"],
-    projects: ["nombre", "descripcion", "clientId", "precioTotal", "fechaInicio", "fechaFinal", "estado"],
-    payments: ["projectId", "amount", "dueDate", "status", "paidDate"]
-  };
+function afterMutation(message) {
+  persistSession();
+  notify(message);
+  render();
+}
 
-  const sourceByType = {
-    clients: state.clients,
-    projects: state.projects,
-    payments: state.payments.map((payment) => ({ ...payment, status: inferPaymentStatus(payment) }))
-  };
+function totalPaidByProject(projectId) {
+  return state.data.payments.filter((pay) => pay.projectId === projectId).reduce((acc, p) => acc + Number(p.amount), 0);
+}
 
-  const headers = headersByType[type];
-  const rows = sourceByType[type];
-  const csv = [headers.join(",")]
-    .concat(
-      rows.map((row) => headers.map((header) => `"${String(row[header] ?? "").replace(/"/g, '""')}"`).join(","))
-    )
-    .join("\n");
+function paymentStatus(projectId) {
+  const project = state.data.projects.find((p) => p.id === projectId);
+  if (!project) return "Pending";
+  const paid = totalPaidByProject(projectId);
+  if (paid <= 0) return "Pending";
+  if (paid < Number(project.total)) return "Partially Paid";
+  return "Paid";
+}
 
+function badgeClass(status) {
+  if (status === "Paid") return "paid";
+  if (status === "Partially Paid") return "partial";
+  return "pending";
+}
+
+function getPaidThisMonth() {
+  const now = new Date();
+  return state.data.payments.reduce((sum, pay) => {
+    const d = new Date(pay.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() ? sum + Number(pay.amount) : sum;
+  }, 0);
+}
+
+function getPendingAmount() {
+  return state.data.projects.reduce((sum, p) => sum + Math.max(Number(p.total) - totalPaidByProject(p.id), 0), 0);
+}
+
+function clientName(id) {
+  return state.data.clients.find((c) => c.id === id)?.name || "Unknown client";
+}
+
+function projectName(id) {
+  return state.data.projects.find((p) => p.id === id)?.name || "Unknown project";
+}
+
+function money(value) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
+}
+
+function notify(message) {
+  els.toast.textContent = message;
+  els.toast.classList.add("show");
+  setTimeout(() => els.toast.classList.remove("show"), 1600);
+}
+
+function exportCsv(fileName, rows) {
+  if (!rows.length) {
+    notify(`No ${fileName} to export yet.`);
+    return;
+  }
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => JSON.stringify(row[h] ?? "")).join(","))].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = url;
-  link.download = `${type}-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
+  link.href = URL.createObjectURL(blob);
+  link.download = `${fileName}-report.csv`;
   link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
-
-function setupEvents() {
-  els.navButtons.forEach((btn) => {
-    btn.addEventListener("click", () => switchPanel(btn.dataset.route));
-  });
-
-  els.clientForm.addEventListener("submit", handleClientSubmit);
-  els.projectForm.addEventListener("submit", handleProjectSubmit);
-  els.paymentForm.addEventListener("submit", handlePaymentSubmit);
-
-  els.resetClientForm.addEventListener("click", resetClientForm);
-  els.resetProjectForm.addEventListener("click", resetProjectForm);
-  els.resetPaymentForm.addEventListener("click", resetPaymentForm);
-
-  els.clientSearch.addEventListener("input", renderClientsTable);
-
-  document.addEventListener("click", handleTableActions);
-
-  els.exportButtons.forEach((button) => {
-    button.addEventListener("click", () => exportCsv(button.dataset.export));
-  });
-
-  setupFilters();
-}
-
-loadState();
-setupEvents();
-renderAll();
