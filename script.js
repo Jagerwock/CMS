@@ -261,7 +261,7 @@ function renderDashboard() {
       <article class="stats-card">
         <div class="stats-head">
           <h3>Estadísticas</h3>
-          <div class="stats-tabs"><span>Semanal</span> <span>Mensual</span></div>
+          <div class="stats-tabs"><span class="active">Semanal</span> <span>Mensual</span></div>
         </div>
         <div class="stats-grid">
           <article><p>Visitas</p><strong>180</strong></article>
