@@ -35,6 +35,7 @@ const PAGE_STATUSES = ["draft", "review", "published", "archived"];
 
 const state = {
   tab: "dashboard",
+  statsPeriod: "weekly",
   selectedPageId: "home",
   selectedSectionId: "hero_1",
   data: {
@@ -240,6 +241,14 @@ function renderTopbar() {
 function renderDashboard() {
   const totalBlocks = state.data.pages.reduce((sum, page) => sum + page.sections.reduce((acc, sec) => acc + sec.blocks.length, 0), 0);
   const publishedPages = state.data.pages.filter((p) => p.status === "published").length;
+  const period = state.statsPeriod === "monthly" ? "monthly" : "weekly";
+
+  const dashboardStats = {
+    weekly: { visits: "180", uniqueUsers: "22", clicks: "219", avgVisitTime: "2min" },
+    monthly: { visits: "760", uniqueUsers: "94", clicks: "903", avgVisitTime: "3.4min" }
+  };
+
+  const metrics = dashboardStats[period];
 
   els.tabs.dashboard.innerHTML = `
     <section class="dashboard-layout">
@@ -247,7 +256,15 @@ function renderDashboard() {
         <article class="card hierarchy-card">
           <h3>Jerarquía</h3>
           <div class="hierarchy-flow">
-            <span>Site</span><span>Pages</span><span>Sections</span><span>Blocks</span><span>Publish</span>
+            <span class="hierarchy-step">Site</span>
+            <span class="hierarchy-arrow" aria-hidden="true">›</span>
+            <span class="hierarchy-step">Pages</span>
+            <span class="hierarchy-arrow" aria-hidden="true">›</span>
+            <span class="hierarchy-step">Sections</span>
+            <span class="hierarchy-arrow" aria-hidden="true">›</span>
+            <span class="hierarchy-step">Blocks</span>
+            <span class="hierarchy-arrow" aria-hidden="true">›</span>
+            <span class="hierarchy-step">Publish</span>
           </div>
         </article>
 
@@ -261,13 +278,16 @@ function renderDashboard() {
       <article class="stats-card">
         <div class="stats-head">
           <h3>Estadísticas</h3>
-          <div class="stats-tabs"><span class="active">Semanal</span> <span>Mensual</span></div>
+          <div class="stats-tabs" role="group" aria-label="Cambiar período de estadísticas">
+            <button class="stats-tab ${period === "weekly" ? "active" : ""}" data-period="weekly" type="button">Semanal</button>
+            <button class="stats-tab ${period === "monthly" ? "active" : ""}" data-period="monthly" type="button">Mensual</button>
+          </div>
         </div>
         <div class="stats-grid">
-          <article><p>Visitas</p><strong>180</strong></article>
-          <article><p>Usuarios únicos</p><strong class="small-value">22</strong></article>
-          <article><p>Clicks</p><strong>219</strong></article>
-          <article><p>Tiempo por visita</p><strong class="small-value">2min</strong></article>
+          <article><p>Visitas</p><strong>${metrics.visits}</strong></article>
+          <article><p>Usuarios únicos</p><strong class="small-value">${metrics.uniqueUsers}</strong></article>
+          <article><p>Clicks</p><strong>${metrics.clicks}</strong></article>
+          <article><p>Tiempo por visita</p><strong class="small-value">${metrics.avgVisitTime}</strong></article>
         </div>
       </article>
     </section>
@@ -290,12 +310,22 @@ function renderDashboard() {
         <h3>Secciones disponibles (${Object.keys(sectionRegistry).length})</h3>
         <ul class="stack-list">
           ${Object.entries(sectionRegistry)
-            .map(([type, section]) => `<li><strong>${section.label}</strong><span>/${type}</span><span class="badge">${SECTION_CATEGORIES[type]}</span></li>`)
+            .map(([type, section]) => `<li><strong>${section.label}</strong><span>/${type}</span><span class="badge category-badge">${SECTION_CATEGORIES[type]}</span></li>`)
             .join("")}
         </ul>
       </article>
     </section>
   `;
+
+  els.tabs.dashboard.querySelectorAll(".stats-tab").forEach((button) => {
+    button.onclick = () => {
+      const selectedPeriod = button.dataset.period;
+      if (!selectedPeriod) return;
+
+      state.statsPeriod = selectedPeriod;
+      renderDashboard();
+    };
+  });
 }
 
 function renderPagesManager() {

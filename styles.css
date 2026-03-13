@@ -193,6 +193,7 @@ body {
   gap: 14px;
   align-items: stretch;
 }
+
 .dashboard-left {
   display: grid;
   gap: 12px;
@@ -204,19 +205,41 @@ body {
   letter-spacing: -0.04em;
   font-weight: 700;
 }
-.hierarchy-flow {
+
+.hierarchy-card {
+  min-height: 130px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  justify-content: center;
 }
-.hierarchy-flow span {
-  padding: 5px 12px;
+
+.hierarchy-flow {
+  width: 100%;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hierarchy-step {
+  flex: 1 1 0;
+  min-width: 88px;
+  padding: 8px 20px;
   border-radius: 999px;
   border: 1.5px solid #6bcdd6;
   background: #fafdff;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  text-align: center;
   color: #2f5a8a;
+}
+
+.hierarchy-arrow {
+  color: #4f6783;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 600;
 }
 
 .metrics-row {
@@ -224,11 +247,13 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
+
 .metric-card p {
   margin: 0;
   color: #8390a5;
   font-size: 12px;
 }
+
 .metric-card h3 {
   margin: 8px 0 0;
   color: #1f4d8d;
@@ -238,46 +263,65 @@ body {
 
 .stats-card {
   border-radius: 20px;
-  background: linear-gradient(145deg, #5bcfce, #2f5f95);
+  background: linear-gradient(145deg, #59cecc, #2f5f95);
   color: #effeff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
   padding: 16px;
   display: grid;
   gap: 12px;
 }
+
 .stats-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
+
 .stats-head h3 {
   margin: 0;
-  font-size: 26px;
-  letter-spacing: -0.03em;
+  font-size: 24px;
+  letter-spacing: -0.02em;
 }
-.stats-tabs { display: flex; gap: 6px; }
-.stats-tabs span {
-  font-size: 10px;
-  background: rgba(238, 247, 255, 0.82);
-  color: #355d89;
+
+.stats-tabs {
+  display: inline-flex;
+  gap: 0;
+  background: #2d8256;
   border-radius: 999px;
-  padding: 3px 8px;
+  overflow: hidden;
 }
-.stats-tabs span.active { background: rgba(255,255,255,0.95); }
+
+.stats-tab {
+  font-size: 12px;
+  font-weight: 700;
+  background: transparent;
+  color: #d7f7df;
+  border: 0;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.stats-tab.active {
+  background: #44b677;
+  color: #ffffff;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   border-top: 1px solid rgba(255, 255, 255, 0.24);
   border-left: 1px solid rgba(255, 255, 255, 0.24);
 }
+
 .stats-grid article {
   padding: 10px 8px;
   border-right: 1px solid rgba(255, 255, 255, 0.24);
   border-bottom: 1px solid rgba(255, 255, 255, 0.24);
 }
-.stats-grid p { margin: 0; font-size: 12px; }
-.stats-grid strong { font-size: 48px; line-height: 1.05; display: block; margin-top: 3px; }
-.stats-grid .small-value { font-size: 36px; }
+
+.stats-grid p { margin: 0; font-size: 14px; }
+.stats-grid strong { font-size: 52px; line-height: 1.05; display: block; margin-top: 3px; }
+.stats-grid .small-value { font-size: 42px; }
 
 .content-title {
   margin: 20px 0 14px;
@@ -301,6 +345,7 @@ body {
   gap: 10px;
   align-items: center;
 }
+
 .stack-list strong { font-size: 13px; color: #24497d; }
 .stack-list span { color: #8d99ad; font-size: 11px; }
 .badge {
@@ -312,6 +357,8 @@ body {
   font-weight: 700;
   justify-self: end;
 }
+
+.category-badge { color: #000; }
 .status-draft { background: #edf1f6; color: #6f7787; }
 .status-review { background: #1f4f8b; color: #e4f0ff; }
 .status-published { background: #4bcfc8; color: #f3fffd; }
@@ -338,6 +385,7 @@ th, td { text-align: left; border-bottom: 1px solid var(--border); padding: 0.62
   background: var(--surface-soft);
   padding: 0.4rem;
 }
+
 .section-row.active { border-color: #1f4d8d; background: #eef2ff; }
 .section-item {
   border: none;
@@ -347,6 +395,7 @@ th, td { text-align: left; border-bottom: 1px solid var(--border); padding: 0.62
   gap: 0.2rem;
   cursor: pointer;
 }
+
 .section-item small { color: var(--muted); }
 .mini-actions { display: flex; gap: 0.3rem; align-items: flex-start; }
 
@@ -420,6 +469,11 @@ textarea { min-height: 96px; resize: vertical; }
   .form-grid,
   .catalog-grid,
   .metrics-row { grid-template-columns: 1fr; }
+
+  .hierarchy-flow {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 
   .platform-shell { grid-template-columns: 1fr; height: auto; }
   .sidebar { min-height: auto; }
