@@ -203,11 +203,11 @@ function bootstrap() {
 }
 
 function bindEvents() {
-  els.menu.addEventListener("click", (event) => {
-    const button = event.target.closest(".menu-item");
-    if (!button) return;
-    state.tab = button.dataset.tab;
-    render();
+  document.querySelectorAll("[data-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.tab = button.dataset.tab;
+      render();
+    });
   });
 }
 
@@ -233,32 +233,48 @@ function renderMenuState() {
 }
 
 function renderTopbar() {
-  els.siteStatusChip.textContent = `Estado del sitio: ${state.data.site.status}`;
+  els.siteStatusChip.textContent = state.data.site.status;
   els.pagesChip.textContent = `Páginas: ${state.data.pages.length}`;
 }
 
 function renderDashboard() {
-  const totalSections = state.data.pages.reduce((sum, page) => sum + page.sections.length, 0);
   const totalBlocks = state.data.pages.reduce((sum, page) => sum + page.sections.reduce((acc, sec) => acc + sec.blocks.length, 0), 0);
   const publishedPages = state.data.pages.filter((p) => p.status === "published").length;
 
   els.tabs.dashboard.innerHTML = `
-    <div class="card hierarchy-card">
-      <h3>Jerarquía del CMS</h3>
-      <p class="muted">Sitio → Páginas → Secciones → Bloques → Publicación</p>
-      <div class="hierarchy-flow">
-        <span>Site</span><span>Pages</span><span>Sections</span><span>Blocks</span><span>Publish</span>
+    <section class="dashboard-layout">
+      <div class="dashboard-left">
+        <article class="card hierarchy-card">
+          <h3>Jerarquía</h3>
+          <div class="hierarchy-flow">
+            <span>Site</span><span>Pages</span><span>Sections</span><span>Blocks</span><span>Publish</span>
+          </div>
+        </article>
+
+        <div class="metrics-row">
+          <article class="card metric-card"><p>Páginas</p><h3>${state.data.pages.length}</h3></article>
+          <article class="card metric-card"><p>Publicadas</p><h3>${publishedPages}</h3></article>
+          <article class="card metric-card"><p>Bloques</p><h3>${totalBlocks}</h3></article>
+        </div>
       </div>
-    </div>
 
-    <div class="grid-4">
-      <article class="card metric"><p class="eyebrow">Site</p><h3>${state.data.site.name}</h3></article>
-      <article class="card metric"><p class="eyebrow">Páginas</p><h3>${state.data.pages.length}</h3></article>
-      <article class="card metric"><p class="eyebrow">Publicadas</p><h3>${publishedPages}</h3></article>
-      <article class="card metric"><p class="eyebrow">Bloques</p><h3>${totalBlocks}</h3></article>
-    </div>
+      <article class="stats-card">
+        <div class="stats-head">
+          <h3>Estadísticas</h3>
+          <div class="stats-tabs"><span>Semanal</span> <span>Mensual</span></div>
+        </div>
+        <div class="stats-grid">
+          <article><p>Visitas</p><strong>180</strong></article>
+          <article><p>Usuarios únicos</p><strong class="small-value">22</strong></article>
+          <article><p>Clicks</p><strong>219</strong></article>
+          <article><p>Tiempo por visita</p><strong class="small-value">2min</strong></article>
+        </div>
+      </article>
+    </section>
 
-    <div class="layout-2">
+    <h3 class="content-title">Contenido del sitio</h3>
+
+    <section class="layout-2">
       <article class="card">
         <h3>Páginas recientes</h3>
         <ul class="stack-list">
@@ -274,18 +290,11 @@ function renderDashboard() {
         <h3>Secciones disponibles (${Object.keys(sectionRegistry).length})</h3>
         <ul class="stack-list">
           ${Object.entries(sectionRegistry)
-            .map(([type, section]) => `<li><strong>${section.label}</strong><span>${type}</span><span class="badge">${SECTION_CATEGORIES[type]}</span></li>`)
+            .map(([type, section]) => `<li><strong>${section.label}</strong><span>/${type}</span><span class="badge">${SECTION_CATEGORIES[type]}</span></li>`)
             .join("")}
         </ul>
       </article>
-    </div>
-
-    <article class="card">
-      <h3>Estado general del proyecto</h3>
-      <p class="muted">Esta plataforma servirá para construir y administrar páginas web desde un panel, sin tocar código.</p>
-      <p class="muted">Definición: Plataforma CMS que permite gestionar páginas mediante secciones y bloques reutilizables, con edición visual, render dinámico y publicación.</p>
-      <p class="muted">Total de secciones actuales: <strong>${totalSections}</strong>.</p>
-    </article>
+    </section>
   `;
 }
 
